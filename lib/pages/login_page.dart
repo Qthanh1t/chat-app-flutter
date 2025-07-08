@@ -29,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       box.put("token", data["token"]);
-      box.put("userId", data["user"]["_id"]);
+      box.put("userId", data["user"]["id"]);
       box.put("username", data["user"]["username"]);
 
       Navigator.pushReplacement(
