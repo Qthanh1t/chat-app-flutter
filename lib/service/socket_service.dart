@@ -33,6 +33,16 @@ class SocketService {
     });
   }
 
+  void sendImage(String receiverId, String base64Image) {
+    final senderId = box.get("userId");
+    socket.emit("send_message", {
+      "senderId": senderId,
+      "receiverId": receiverId,
+      "content": base64Image,
+      "type": "image"
+    });
+  }
+
   void onMessage(Function(dynamic) callback) {
     socket.on("receive_message", (data) {
       callback(data);
