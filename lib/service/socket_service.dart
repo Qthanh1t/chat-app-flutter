@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 
 class SocketService {
   late IO.Socket socket;
+  Function(dynamic)? _onMessageCallback;
   final box = Hive.box("chat_app");
   void connect() {
     final token = box.get("token");
@@ -47,5 +48,9 @@ class SocketService {
     socket.on("receive_message", (data) {
       callback(data);
     });
+  }
+
+  void offMessage() {
+    _onMessageCallback = null;
   }
 }
