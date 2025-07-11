@@ -33,28 +33,44 @@ class _ChatPageState extends State<ChatPage> {
     socketService.onMessage((data) {
       if (!mounted) return;
       if ((data["senderId"] == widget.receiverId &&
-              data["receiverId"] == myUserId) ||
-          (data["senderId"] == myUserId &&
-              data["receiverId"] == widget.receiverId)) {
+          data["receiverId"] == myUserId)) {
         setState(() {
           messages.add(data);
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
+        });
       }
+      if ((data["senderId"] == myUserId &&
+          data["receiverId"] == widget.receiverId)) {
+        _scrollToBottom();
+      }
+    });
+    //load message history
+    fetchMessages(currentPage).then((_) {
+      // Sau khi load lần đầu xong → scroll xuống cuối
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
+      });
+    });
+    _scrollController.addListener(() {
+      if (_scrollController.position.atEdge &&
+          _scrollController.position.pixels == 0) {
+        // đang ở đầu list
+        currentPage++;
+        fetchMessages(currentPage);
+      }
+    });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
-    });
-    //load message history
-    fetchMessages(currentPage);
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-          _scrollController.position.minScrollExtent) {
-        currentPage++;
-        fetchMessages(currentPage);
-      }
-    });
+    }
   }
 
   @override
@@ -68,7 +84,7 @@ class _ChatPageState extends State<ChatPage> {
     final token = box.get("token");
     final response = await http.get(
       Uri.parse(
-          "http://10.0.2.2:5000/api/messages/${widget.receiverId}?page=$page&limit=20"),
+          "http://10.0.2.2:5000/api/messages/${widget.receiverId}?page=$page&limit=15"),
       headers: {"Authorization": "Bearer $token"},
     );
 
@@ -82,15 +98,21 @@ class _ChatPageState extends State<ChatPage> {
   void send() {
     final receiverId = widget.receiverId;
     final content = messageController.text;
+    final myUserId = box.get("userId");
     if (content.isNotEmpty) {
+      final newMessage = {
+        "senderId": myUserId,
+        "receiverId": receiverId,
+        "content": content,
+        "type": "text",
+      };
+
+      setState(() {
+        messages.add(newMessage);
+      });
       socketService.sendMessage(receiverId, content);
       messageController.clear();
     }
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
   }
 
   void pickAndSendImage() async {
