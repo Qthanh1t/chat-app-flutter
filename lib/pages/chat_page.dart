@@ -4,6 +4,13 @@ import '../service/socket_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constants/api_constants.dart';
+import 'dart:io';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
 
 class ChatPage extends StatefulWidget {
   final String receiverId;
@@ -33,15 +40,17 @@ class _ChatPageState extends State<ChatPage> {
     socketService.onMessage((data) {
       if (!mounted) return;
       if ((data["senderId"] == widget.receiverId &&
-          data["receiverId"] == myUserId)) {
+              data["receiverId"] == myUserId) ||
+          (data["senderId"] == myUserId &&
+              data["receiverId"] == widget.receiverId &&
+              data["type"] == "image")) {
         setState(() {
           messages.add(data);
         });
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _scrollToBottom();
         });
-      }
-      if ((data["senderId"] == myUserId &&
+      } else if ((data["senderId"] == myUserId &&
           data["receiverId"] == widget.receiverId)) {
         _scrollToBottom();
       }
@@ -83,8 +92,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> fetchMessages(int page) async {
     final token = box.get("token");
     final response = await http.get(
-      Uri.parse(
-          "http://10.0.2.2:5000/api/messages/${widget.receiverId}?page=$page&limit=15"),
+      Uri.parse("$baseUrl/messages/${widget.receiverId}?page=$page&limit=15"),
       headers: {"Authorization": "Bearer $token"},
     );
 
@@ -110,7 +118,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         messages.add(newMessage);
       });
-      socketService.sendMessage(receiverId, content);
+      socketService.sendMessage(receiverId, content, "text");
       messageController.clear();
     }
   }
@@ -118,11 +126,60 @@ class _ChatPageState extends State<ChatPage> {
   void pickAndSendImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
     if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final receiverId = widget.receiverId;
-      socketService.sendImage(receiverId, base64Image);
+      final token = box.get("token");
+
+      File imageFile = File(pickedFile.path);
+
+      // Copy sang thư mục documents để tránh lỗi cache temp
+      Directory appDocDir = await getApplicationDocumentsDirectory();
+      String newPath = "${appDocDir.path}/${basename(imageFile.path)}";
+      File copiedImage = await imageFile.copy(newPath);
+
+      await uploadImageDio(copiedImage, token);
+    }
+  }
+
+  Future<void> uploadImageDio(File imageFile, String token) async {
+    final dio = Dio();
+
+    // Set token vào header
+    dio.options.headers["Authorization"] = "Bearer $token";
+
+    // Lấy mime type của file từ path
+    final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
+    final typeSplit = mimeType.split('/');
+
+    // Tạo multipart file với contentType đúng
+    final multipartFile = await MultipartFile.fromFile(
+      imageFile.path,
+      filename: basename(imageFile.path),
+      contentType: MediaType(typeSplit[0], typeSplit[1]),
+    );
+
+    // Tạo form data
+    final formData = FormData.fromMap({
+      "image": multipartFile,
+    });
+
+    try {
+      final response = await dio.post(
+        "$baseUrl/upload",
+        data: formData,
+      );
+
+      if (response.statusCode == 200) {
+        final path = response.data["file"]["path"];
+        final receiverId = widget.receiverId;
+        socketService.sendMessage(receiverId, path, "image");
+        print("Upload thành công: $path");
+      } else {
+        print("Upload thất bại: ${response.statusCode}");
+        print(response.data);
+      }
+    } catch (e) {
+      print("Lỗi upload ảnh: $e");
     }
   }
 

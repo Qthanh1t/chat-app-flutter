@@ -1,5 +1,6 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:hive/hive.dart';
+import '../constants/api_constants.dart';
 
 class SocketService {
   late IO.Socket socket;
@@ -8,10 +9,13 @@ class SocketService {
   void connect() {
     final token = box.get("token");
     final userId = box.get("userId");
-    socket = IO.io("http://10.0.2.2:5000", <String, dynamic>{
+    socket = IO.io(socketUrl, <String, dynamic>{
       "transports": ["websocket"],
       "autoConnect": false,
       "extraHeaders": {"Authorization": "Bearer $token"},
+      "reconnection": true,
+      "reconnectionAttempts": 5,
+      "reconnectionDelay": 2000
     });
     socket.connect();
     socket.onConnect((_) {
@@ -24,23 +28,13 @@ class SocketService {
     });
   }
 
-  void sendMessage(String receiverId, String content, {String type = "text"}) {
+  void sendMessage(String receiverId, String content, String type) {
     final senderId = box.get("userId");
     socket.emit("send_message", {
       "senderId": senderId,
       "receiverId": receiverId,
       "content": content,
       "type": type
-    });
-  }
-
-  void sendImage(String receiverId, String base64Image) {
-    final senderId = box.get("userId");
-    socket.emit("send_message", {
-      "senderId": senderId,
-      "receiverId": receiverId,
-      "content": base64Image,
-      "type": "image"
     });
   }
 

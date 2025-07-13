@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
+import '../constants/api_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
 
     try {
       final response = await http.get(
-        Uri.parse("http://10.0.2.2:5000/api/users/me"),
+        Uri.parse("$baseUrl/users/me"),
         headers: {"Authorization": "Bearer $token"},
       );
 

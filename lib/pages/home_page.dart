@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import 'chat_page.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constants/api_constants.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,7 +27,7 @@ class _HomePageState extends State<HomePage> {
   void fetchUsers() async {
     final token = box.get("token");
     final response = await http.get(
-      Uri.parse("http://10.0.2.2:5000/api/users/friends"),
+      Uri.parse("$baseUrl/users/friends"),
       headers: {"Authorization": "Bearer $token"},
     );
     final data = jsonDecode(response.body);

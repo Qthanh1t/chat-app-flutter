@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import '../constants/api_constants.dart';
 import 'home_page.dart';
 import 'register_page.dart';
 
@@ -21,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> login() async {
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/users/login"),
+      Uri.parse("$baseUrl/users/login"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(
           {"email": emailController.text, "password": passwordController.text}),
