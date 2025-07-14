@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatPage extends StatefulWidget {
   final String receiverId;
@@ -209,11 +210,15 @@ class _ChatPageState extends State<ChatPage> {
                             const SizedBox(height: 8),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                message["content"],
-                                width: double.infinity, // hoặc để null
+                              child: CachedNetworkImage(
+                                imageUrl: message["content"],
+                                width: double.infinity,
                                 height: 250,
                                 fit: BoxFit.cover,
+                                placeholder: (context, url) => const Center(
+                                    child: CircularProgressIndicator()),
+                                errorWidget: (context, url, error) =>
+                                    const Icon(Icons.error),
                               ),
                             ),
                           ],

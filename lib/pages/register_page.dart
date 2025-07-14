@@ -1,3 +1,4 @@
+import 'package:chat_app/routes/app_navigator.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../constants/api_constants.dart';
@@ -28,7 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
       },
     );
     if (response.statusCode == 201) {
-      Navigator.pop(context);
+      AppNavigator.goToLogin(context);
     } else {
       print("Đăng ký lỗi: ${response.data}");
     }

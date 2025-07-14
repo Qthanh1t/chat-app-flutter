@@ -1,9 +1,8 @@
+import 'package:chat_app/routes/app_navigator.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../constants/api_constants.dart';
-import 'home_page.dart';
-import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -34,10 +33,7 @@ class _LoginPageState extends State<LoginPage> {
       box.put("userId", data["user"]["id"]);
       box.put("username", data["user"]["username"]);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
+      AppNavigator.goToHome(context);
     } else {
       print("Đăng nhập thất bại: ${response.data}");
     }
@@ -64,10 +60,7 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(onPressed: login, child: const Text("Đăng nhập")),
             TextButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RegisterPage()),
-                );
+                AppNavigator.goToRegister(context);
               },
               child: const Text("Chưa có tài khoản? Đăng ký"),
             )

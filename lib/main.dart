@@ -1,9 +1,11 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'pages/login_page.dart';
+import 'pages/register_page.dart';
 import 'pages/home_page.dart';
-import '../constants/api_constants.dart';
+import 'pages/chat_page.dart';
+import 'pages/splash_page.dart';
+import 'routes/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,47 +18,28 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  Future<bool> checkToken() async {
-    final box = Hive.box("chat_app");
-    final token = box.get("token");
-    if (token == null) return false;
-
-    try {
-      final dio = Dio();
-      dio.options.headers["Authorization"] = "Bearer $token";
-      final response = await dio.get(
-        "$baseUrl/users/me",
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        box.put("userId", data["_id"]);
-        box.put("username", data["username"]);
-        return true;
-      } else {
-        box.delete("token");
-        return false;
-      }
-    } catch (e) {
-      box.delete("token");
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: checkToken(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const MaterialApp(
-              home: Scaffold(body: Center(child: CircularProgressIndicator())));
+    return MaterialApp(
+      title: 'Flutter Chat',
+      initialRoute: AppRoutes.splash,
+      routes: {
+        AppRoutes.splash: (context) => const SplashPage(),
+        AppRoutes.login: (context) => const LoginPage(),
+        AppRoutes.register: (context) => const RegisterPage(),
+        AppRoutes.home: (context) => const HomePage(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == AppRoutes.chat) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => ChatPage(
+              receiverId: args['receiverId'],
+              receiverName: args['receiverName'],
+            ),
+          );
         }
-        final isLoggedIn = snapshot.data!;
-        return MaterialApp(
-          title: 'Flutter Chat',
-          home: isLoggedIn ? const HomePage() : const LoginPage(),
-        );
+        return null;
       },
     );
   }
