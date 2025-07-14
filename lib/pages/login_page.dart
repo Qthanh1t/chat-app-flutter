@@ -1,7 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../constants/api_constants.dart';
 import 'home_page.dart';
 import 'register_page.dart';
@@ -20,14 +19,17 @@ class _LoginPageState extends State<LoginPage> {
   final box = Hive.box("chat_app");
 
   Future<void> login() async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/users/login"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(
-          {"email": emailController.text, "password": passwordController.text}),
+    final dio = Dio();
+    dio.options.headers["Content-Type"] = "application/json";
+    final response = await dio.post(
+      "$baseUrl/users/login",
+      data: {
+        "email": emailController.text,
+        "password": passwordController.text
+      },
     );
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = response.data;
       box.put("token", data["token"]);
       box.put("userId", data["user"]["id"]);
       box.put("username", data["user"]["username"]);
@@ -37,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } else {
-      print("Đăng nhập thất bại: ${response.body}");
+      print("Đăng nhập thất bại: ${response.data}");
     }
   }
 

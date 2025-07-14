@@ -1,6 +1,5 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../constants/api_constants.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -18,19 +17,20 @@ class _RegisterPageState extends State<RegisterPage> {
   final passwordController = TextEditingController();
 
   Future<void> register() async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/users/register"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
+    final dio = Dio();
+    dio.options.headers["Content-Type"] = "application/json";
+    final response = await dio.post(
+      "$baseUrl/users/register",
+      data: {
         "username": usernameController.text,
         "email": emailController.text,
         "password": passwordController.text,
-      }),
+      },
     );
     if (response.statusCode == 201) {
       Navigator.pop(context);
     } else {
-      print("Đăng ký lỗi: ${response.body}");
+      print("Đăng ký lỗi: ${response.data}");
     }
   }
 

@@ -1,8 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 import '../constants/api_constants.dart';
@@ -24,13 +22,14 @@ class MyApp extends StatelessWidget {
     if (token == null) return false;
 
     try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/users/me"),
-        headers: {"Authorization": "Bearer $token"},
+      final dio = Dio();
+      dio.options.headers["Authorization"] = "Bearer $token";
+      final response = await dio.get(
+        "$baseUrl/users/me",
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = response.data;
         box.put("userId", data["_id"]);
         box.put("username", data["username"]);
         return true;

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../service/socket_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import 'dart:io';
 import 'package:path/path.dart';
@@ -90,14 +88,14 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> fetchMessages(int page) async {
+    final dio = Dio();
     final token = box.get("token");
-    final response = await http.get(
-      Uri.parse("$baseUrl/messages/${widget.receiverId}?page=$page&limit=15"),
-      headers: {"Authorization": "Bearer $token"},
+    dio.options.headers["Authorization"] = "Bearer $token";
+    final response = await dio.get(
+      "$baseUrl/messages/${widget.receiverId}?page=$page&limit=15",
     );
 
-    final responseJson = jsonDecode(response.body);
-    final data = responseJson["messages"].reversed.toList();
+    final data = response.data["messages"].reversed.toList();
     setState(() {
       messages.insertAll(0, data); // thêm vào đầu danh sách
     });
@@ -205,7 +203,7 @@ class _ChatPageState extends State<ChatPage> {
                               CrossAxisAlignment.start, // Thêm dòng này
                           children: [
                             Text(
-                              "${message["senderId"]}:",
+                              "${message["senderId"] == widget.receiverId ? widget.receiverName : box.get("username")}:",
                               style: const TextStyle(fontSize: 16),
                             ),
                             const SizedBox(height: 8),
@@ -227,7 +225,7 @@ class _ChatPageState extends State<ChatPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            "${message["senderId"]}: ${message["content"]}",
+                            "${message["senderId"] == widget.receiverId ? widget.receiverName : box.get("username")}: ${message["content"]}",
                             style: const TextStyle(fontSize: 16),
                           ),
                         ),
