@@ -18,24 +18,38 @@ class _LoginPageState extends State<LoginPage> {
   final box = Hive.box("chat_app");
 
   Future<void> login() async {
-    final dio = Dio();
-    dio.options.headers["Content-Type"] = "application/json";
-    final response = await dio.post(
-      "$baseUrl/users/login",
-      data: {
-        "email": emailController.text,
-        "password": passwordController.text
-      },
-    );
-    if (response.statusCode == 200) {
-      final data = response.data;
-      box.put("token", data["token"]);
-      box.put("userId", data["user"]["id"]);
-      box.put("username", data["user"]["username"]);
-
-      AppNavigator.goToHome(context);
-    } else {
-      print("Đăng nhập thất bại: ${response.data}");
+    try {
+      final dio = Dio();
+      dio.options.headers["Content-Type"] = "application/json";
+      final response = await dio.post(
+        "$baseUrl/users/login",
+        data: {
+          "email": emailController.text,
+          "password": passwordController.text
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = response.data;
+        box.put("token", data["token"]);
+        box.put("userId", data["user"]["id"]);
+        box.put("username", data["user"]["username"]);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đăng nhập thành công!"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        AppNavigator.goToHome(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Sai thông tin đăng nhập!"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

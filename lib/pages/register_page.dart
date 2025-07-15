@@ -18,20 +18,34 @@ class _RegisterPageState extends State<RegisterPage> {
   final passwordController = TextEditingController();
 
   Future<void> register() async {
-    final dio = Dio();
-    dio.options.headers["Content-Type"] = "application/json";
-    final response = await dio.post(
-      "$baseUrl/users/register",
-      data: {
-        "username": usernameController.text,
-        "email": emailController.text,
-        "password": passwordController.text,
-      },
-    );
-    if (response.statusCode == 201) {
-      AppNavigator.goToLogin(context);
-    } else {
-      print("Đăng ký lỗi: ${response.data}");
+    try {
+      final dio = Dio();
+      dio.options.headers["Content-Type"] = "application/json";
+      final response = await dio.post(
+        "$baseUrl/users/register",
+        data: {
+          "username": usernameController.text,
+          "email": emailController.text,
+          "password": passwordController.text,
+        },
+      );
+      if (response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đăng ký thành công!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        AppNavigator.goToLogin(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đăng ký thất bại! Email đã tồn tại!!"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
