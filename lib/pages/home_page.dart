@@ -36,6 +36,15 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void logout() async {
+    final box = Hive.box("chat_app");
+    await box.delete("token");
+    await box.delete("userId");
+    await box.delete("username");
+
+    AppNavigator.goToLogin(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,29 +53,28 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final box = Hive.box("chat_app");
-              await box.delete("token");
-              await box.delete("userId");
-              await box.delete("username");
-
-              AppNavigator.goToLogin(context);
-            },
+            onPressed: logout,
           )
         ],
       ),
-      body: ListView.builder(
-        itemCount: users.length,
-        itemBuilder: (context, index) {
-          final user = users[index];
-          return ListTile(
-            title: Text(user["username"]),
-            onTap: () {
-              AppNavigator.goToChat(context, user["_id"], user["username"]);
-            },
-          );
-        },
-      ),
+      body: users.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                return ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.person), //will update later
+                  ),
+                  title: Text(user["username"]),
+                  onTap: () {
+                    AppNavigator.goToChat(
+                        context, user["_id"], user["username"]);
+                  },
+                );
+              },
+            ),
     );
   }
 }

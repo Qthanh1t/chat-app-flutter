@@ -182,11 +182,71 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  Widget buildMessageBubble(BuildContext context, dynamic message) {
+    final myUserId = box.get("userId");
+    final isMe = message["senderId"] == myUserId;
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.blueAccent : Colors.grey[300],
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft:
+                isMe ? const Radius.circular(12) : const Radius.circular(0),
+            bottomRight:
+                isMe ? const Radius.circular(0) : const Radius.circular(12),
+          ),
+        ),
+        child: message["type"] == "image"
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: message["content"],
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) =>
+                      const CircularProgressIndicator(),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                ),
+              )
+            : Text(
+                message["content"],
+                style: TextStyle(
+                  color: isMe ? Colors.white : Colors.black,
+                  fontSize: 16,
+                ),
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Chat với ${widget.receiverName}"),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        leading: const BackButton(color: Colors.black),
+        title: Row(
+          children: [
+            const CircleAvatar(
+              backgroundImage: NetworkImage("https://i.pravatar.cc/150"),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              widget.receiverName,
+              style: const TextStyle(color: Colors.black),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -195,46 +255,7 @@ class _ChatPageState extends State<ChatPage> {
               controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final message = messages[index];
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: message["type"] == "image"
-                      ? Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start, // Thêm dòng này
-                          children: [
-                            Text(
-                              "${message["senderId"] == widget.receiverId ? widget.receiverName : box.get("username")}:",
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(
-                                imageUrl: message["content"],
-                                width: double.infinity,
-                                height: 250,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => const Center(
-                                    child: CircularProgressIndicator()),
-                                errorWidget: (context, url, error) =>
-                                    const Icon(Icons.error),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            "${message["senderId"] == widget.receiverId ? widget.receiverName : box.get("username")}: ${message["content"]}",
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                );
+                return buildMessageBubble(context, messages[index]);
               },
             ),
           ),
@@ -247,10 +268,19 @@ class _ChatPageState extends State<ChatPage> {
                   icon: const Icon(Icons.image),
                 ),
                 Expanded(
-                  child: TextField(
-                    controller: messageController,
-                    decoration:
-                        const InputDecoration(hintText: "Nhập tin nhắn..."),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: TextField(
+                      controller: messageController,
+                      decoration: const InputDecoration(
+                        hintText: "Nhập tin nhắn...",
+                        border: InputBorder.none,
+                      ),
+                    ),
                   ),
                 ),
                 IconButton(
