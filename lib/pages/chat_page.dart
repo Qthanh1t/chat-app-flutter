@@ -14,9 +14,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 class ChatPage extends StatefulWidget {
   final String receiverId;
   final String receiverName;
-
+  final String receiverAvatar;
   const ChatPage(
-      {super.key, required this.receiverId, required this.receiverName});
+      {super.key,
+      required this.receiverId,
+      required this.receiverName,
+      required this.receiverAvatar});
 
   @override
   State<StatefulWidget> createState() {
@@ -237,9 +240,29 @@ class _ChatPageState extends State<ChatPage> {
         leading: const BackButton(color: Colors.black),
         title: Row(
           children: [
-            const CircleAvatar(
-              backgroundImage: NetworkImage("https://i.pravatar.cc/150"),
-            ),
+            CircleAvatar(
+                radius: 20,
+                child: widget.receiverAvatar == ""
+                    ? const Icon(Icons.person)
+                    : ClipOval(
+                        child: Image.network(
+                          widget.receiverAvatar, // Hiển thị ảnh từ URL
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              return child; // Nếu ảnh đã tải xong
+                            } else {
+                              return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
+                            }
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons
+                                .person); // Hiển thị icon lỗi nếu ảnh không tải được
+                          }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
+                        ),
+                      )),
             const SizedBox(width: 8),
             Text(
               widget.receiverName,

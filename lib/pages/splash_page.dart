@@ -38,6 +38,7 @@ class _SplashPageState extends State<SplashPage> {
         final data = response.data;
         box.put("userId", data["_id"]);
         box.put("username", data["username"]);
+        box.put("avatar", data['avatar']);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           AppNavigator.goToHome(context);
         });

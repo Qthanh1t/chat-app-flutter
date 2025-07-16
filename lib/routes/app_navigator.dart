@@ -26,13 +26,14 @@ class AppNavigator {
   }
 
   // Đến màn Chat, truyền receiverId và receiverName
-  static void goToChat(
-      BuildContext context, String receiverId, String receiverName) {
+  static void goToChat(BuildContext context, String receiverId,
+      String receiverName, String receiverAvatar) {
     Navigator.of(context).pushNamed(
       AppRoutes.chat,
       arguments: {
         'receiverId': receiverId,
         'receiverName': receiverName,
+        'receiverAvatar': receiverAvatar,
       },
     );
   }

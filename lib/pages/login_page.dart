@@ -33,6 +33,7 @@ class _LoginPageState extends State<LoginPage> {
         box.put("token", data["token"]);
         box.put("userId", data["user"]["id"]);
         box.put("username", data["user"]["username"]);
+        box.put("avatar", data["user"]["avatar"]);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
