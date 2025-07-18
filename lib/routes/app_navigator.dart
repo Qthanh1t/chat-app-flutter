@@ -38,6 +38,13 @@ class AppNavigator {
     );
   }
 
+  //Đến màn hình setting
+  static void goToSetting(BuildContext context) {
+    Navigator.of(context).pushNamed(
+      AppRoutes.setting,
+    );
+  }
+
   // Quay lại màn trước đó
   static void goBack(BuildContext context) {
     Navigator.of(context).pop();

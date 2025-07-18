@@ -36,15 +36,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void logout() async {
-    final box = Hive.box("chat_app");
-    await box.delete("token");
-    await box.delete("userId");
-    await box.delete("username");
-
-    AppNavigator.goToLogin(context);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,9 +43,11 @@ class _HomePageState extends State<HomePage> {
         title: const Text("Chat App"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: logout,
-          )
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              AppNavigator.goToSetting(context);
+            },
+          ),
         ],
       ),
       body: users.isEmpty

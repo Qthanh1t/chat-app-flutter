@@ -6,6 +6,7 @@ import 'pages/home_page.dart';
 import 'pages/chat_page.dart';
 import 'pages/splash_page.dart';
 import 'routes/app_routes.dart';
+import 'pages/setting_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         AppRoutes.login: (context) => const LoginPage(),
         AppRoutes.register: (context) => const RegisterPage(),
         AppRoutes.home: (context) => const HomePage(),
+        AppRoutes.setting: (context) => const SettingPage(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == AppRoutes.chat) {
