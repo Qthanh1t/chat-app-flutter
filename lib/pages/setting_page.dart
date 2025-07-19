@@ -21,7 +21,7 @@ class SettingPage extends StatefulWidget {
 class _SettingPageState extends State<SettingPage> {
   final box = Hive.box("chat_app");
 
-  void setAvatar() async {
+  Future<void> setAvatar() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
@@ -77,9 +77,177 @@ class _SettingPageState extends State<SettingPage> {
     }
   }
 
-  void changeUsername() {}
+  Future<void> changeUsername(BuildContext context) async {
+    final nameController = TextEditingController(text: box.get("username"));
+    final formKey = GlobalKey<FormState>();
 
-  void changePassword() {}
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Đổi tên'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tên người dùng',
+                      icon: Icon(Icons.person),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Tên không được để trống';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Hủy'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Lưu'),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final newUsername = nameController.text.trim();
+                  await callApiChangeUsername(context, newUsername);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> callApiChangeUsername(
+      BuildContext context, String newUsername) async {
+    try {
+      final token = box.get("token");
+      final dio = Dio();
+      dio.options.headers["Authorization"] = "Bearer $token";
+      final response = await dio.post("$baseUrl/users/changeusername",
+          data: {"newUsername": newUsername});
+
+      if (response.statusCode == 200) {
+        setState(() {
+          box.put("username", newUsername);
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đổi tên thành công!"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      print("Lỗi: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đổi tên không thành công!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> changePassword(BuildContext context) async {
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cập nhật thông tin'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Mật khẩu mới',
+                      icon: Icon(Icons.lock),
+                    ),
+                    validator: (value) {
+                      if ((value != null &&
+                              value.isNotEmpty &&
+                              value.length < 6) ||
+                          (value != null && value.isEmpty)) {
+                        return 'Mật khẩu phải từ 6 ký tự';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Hủy'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Lưu'),
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  final newPassword = passwordController.text.trim();
+                  callApiChangePassword(context, newPassword);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> callApiChangePassword(
+      BuildContext context, String newPassword) async {
+    try {
+      final token = box.get("token");
+      final dio = Dio();
+      dio.options.headers["Authorization"] = "Bearer $token";
+      final response = await dio.post("$baseUrl/users/changepassword",
+          data: {"newPassword": newPassword});
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đổi mật khẩu thành công!"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      print("Lỗi: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đổi mật khẩu không thành công!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   void logout(BuildContext context) async {
     final box = Hive.box("chat_app");
@@ -142,12 +310,12 @@ class _SettingPageState extends State<SettingPage> {
               ListTile(
                 leading: const Icon(Icons.person),
                 title: const Text("Đổi tên"),
-                onTap: changeUsername,
+                onTap: () => changeUsername(context),
               ),
               ListTile(
                 leading: const Icon(Icons.lock),
                 title: const Text("Đổi mật khẩu"),
-                onTap: changePassword,
+                onTap: () => changePassword(context),
               ),
               ListTile(
                 leading: const Icon(Icons.logout),
