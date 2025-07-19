@@ -164,7 +164,8 @@ class _SettingPageState extends State<SettingPage> {
   }
 
   Future<void> changePassword(BuildContext context) async {
-    final passwordController = TextEditingController();
+    final passwordController1 = TextEditingController();
+    final passwordController2 = TextEditingController();
     final formKey = GlobalKey<FormState>();
     await showDialog(
       context: context,
@@ -178,7 +179,7 @@ class _SettingPageState extends State<SettingPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextFormField(
-                    controller: passwordController,
+                    controller: passwordController1,
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'Mật khẩu mới',
@@ -190,6 +191,21 @@ class _SettingPageState extends State<SettingPage> {
                               value.length < 6) ||
                           (value != null && value.isEmpty)) {
                         return 'Mật khẩu phải từ 6 ký tự';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: passwordController2,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Nhập lại mật khẩu',
+                      icon: Icon(Icons.lock),
+                    ),
+                    validator: (value) {
+                      if (passwordController1.text !=
+                          passwordController2.text) {
+                        return 'Hãy nhập lại chính xác mật khẩu!';
                       }
                       return null;
                     },
@@ -207,7 +223,7 @@ class _SettingPageState extends State<SettingPage> {
               child: const Text('Lưu'),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
-                  final newPassword = passwordController.text.trim();
+                  final newPassword = passwordController1.text.trim();
                   callApiChangePassword(context, newPassword);
                 }
               },

@@ -15,10 +15,18 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final usernameController = TextEditingController();
   final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final passwordController1 = TextEditingController();
+  final passwordController2 = TextEditingController();
 
   Future<void> register() async {
     try {
+      if ((passwordController1.text.isNotEmpty &&
+              passwordController1.text.length < 6) ||
+          (passwordController1.text.isEmpty)) {
+        throw Exception("Mật khẩu phải chứa ít nhất 6 kí tự!");
+      } else if (passwordController1.text != passwordController2.text) {
+        throw Exception("Hãy nhập lại chính xác mật khẩu!");
+      }
       final dio = Dio();
       dio.options.headers["Content-Type"] = "application/json";
       final response = await dio.post(
@@ -26,7 +34,7 @@ class _RegisterPageState extends State<RegisterPage> {
         data: {
           "username": usernameController.text,
           "email": emailController.text,
-          "password": passwordController.text,
+          "password": passwordController1.text,
         },
       );
       if (response.statusCode == 201) {
@@ -39,13 +47,22 @@ class _RegisterPageState extends State<RegisterPage> {
         );
         AppNavigator.goToLogin(context);
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đăng ký thất bại! Email đã tồn tại!!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } catch (err) {
+      if (err is DioException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Email đã tồn tại"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("$err"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -59,14 +76,19 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             TextField(
                 controller: usernameController,
-                decoration: const InputDecoration(labelText: "Username")),
+                decoration: const InputDecoration(labelText: "Tên người dùng")),
             TextField(
                 controller: emailController,
                 decoration: const InputDecoration(labelText: "Email")),
             TextField(
-                controller: passwordController,
+                controller: passwordController1,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: "Password")),
+                decoration: const InputDecoration(labelText: "Mật khẩu")),
+            TextField(
+                controller: passwordController2,
+                obscureText: true,
+                decoration:
+                    const InputDecoration(labelText: "Nhập lại mật khẩu")),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: register, child: const Text("Đăng ký")),
           ],
