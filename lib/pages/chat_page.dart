@@ -33,6 +33,7 @@ class _ChatPageState extends State<ChatPage> {
   final messageController = TextEditingController();
   final List<dynamic> messages = [];
   final _scrollController = ScrollController();
+  String? selectedMessageId;
   int currentPage = 1;
   @override
   void initState() {
@@ -185,50 +186,94 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  Future<void> deleteMessage(BuildContext context, String messageId) async {
+    try {
+      final dio = Dio();
+      final token = box.get("token");
+      dio.options.headers["Authorization"] = "Bearer $token";
+      if (messageId.isEmpty) {
+        throw Exception("Đã xảy ra lỗi");
+      }
+      final response = await dio.delete("$baseUrl/messages/delete/$messageId");
+      if (response.statusCode == 200) {
+        setState(() {
+          messages.removeWhere((msg) => msg["_id"] == messageId);
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đã xóa tin nhắn"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (err) {
+      print(err);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget buildMessageBubble(BuildContext context, dynamic message) {
     final myUserId = box.get("userId");
     final isMe = message["senderId"] == myUserId;
-
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-        decoration: BoxDecoration(
-          color: isMe ? Colors.blueAccent : Colors.grey[300],
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft:
-                isMe ? const Radius.circular(12) : const Radius.circular(0),
-            bottomRight:
-                isMe ? const Radius.circular(0) : const Radius.circular(12),
-          ),
-        ),
-        child: message["type"] == "image"
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: message["content"],
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) =>
-                      const CircularProgressIndicator(),
-                  errorWidget: (context, url, error) => const Icon(Icons.error),
-                ),
-              )
-            : Text(
-                message["content"],
-                style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black,
-                  fontSize: 16,
-                ),
+    final isSelected = selectedMessageId == message["_id"];
+    return GestureDetector(
+        onLongPress: () {
+          setState(() {
+            selectedMessageId = message["_id"];
+          });
+        },
+        child: Align(
+          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.redAccent.withOpacity(0.3)
+                  : isMe
+                      ? Colors.blueAccent
+                      : Colors.grey[300],
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(12),
+                topRight: const Radius.circular(12),
+                bottomLeft:
+                    isMe ? const Radius.circular(12) : const Radius.circular(0),
+                bottomRight:
+                    isMe ? const Radius.circular(0) : const Radius.circular(12),
               ),
-      ),
-    );
+            ),
+            child: message["type"] == "image"
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: message["content"],
+                      width: 200,
+                      height: 200,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          const CircularProgressIndicator(),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.error),
+                    ),
+                  )
+                : Text(
+                    message["content"],
+                    style: TextStyle(
+                      color: isMe ? Colors.white : Colors.black,
+                      fontSize: 16,
+                    ),
+                  ),
+          ),
+        ));
   }
 
   @override
@@ -315,6 +360,35 @@ class _ChatPageState extends State<ChatPage> {
           )
         ],
       ),
+      bottomNavigationBar: selectedMessageId != null
+          ? BottomAppBar(
+              color: Colors.grey[200],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    onPressed: () async {
+                      await deleteMessage(context, selectedMessageId!);
+                      setState(() {
+                        selectedMessageId = null;
+                      });
+                    },
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    tooltip: 'Xóa tin nhắn',
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        selectedMessageId = null;
+                      });
+                    },
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    tooltip: 'Hủy chọn',
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 }
