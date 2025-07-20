@@ -55,7 +55,7 @@ class _SettingPageState extends State<SettingPage> {
       });
 
       try {
-        final response = await dio.post(
+        final response = await dio.put(
           "$baseUrl/users/setavatar",
           data: formData,
         );
@@ -135,7 +135,7 @@ class _SettingPageState extends State<SettingPage> {
       final token = box.get("token");
       final dio = Dio();
       dio.options.headers["Authorization"] = "Bearer $token";
-      final response = await dio.post("$baseUrl/users/changeusername",
+      final response = await dio.put("$baseUrl/users/changeusername",
           data: {"newUsername": newUsername});
 
       if (response.statusCode == 200) {
@@ -240,7 +240,7 @@ class _SettingPageState extends State<SettingPage> {
       final token = box.get("token");
       final dio = Dio();
       dio.options.headers["Authorization"] = "Bearer $token";
-      final response = await dio.post("$baseUrl/users/changepassword",
+      final response = await dio.put("$baseUrl/users/changepassword",
           data: {"newPassword": newPassword});
 
       if (response.statusCode == 200) {
