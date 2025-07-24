@@ -1,94 +1,51 @@
-import 'package:chat_app/routes/app_navigator.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-import '../constants/api_constants.dart';
+import 'chat_list_page.dart';
+import 'friends_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _HomePageState();
-  }
+  State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  List users = [];
-  final box = Hive.box("chat_app");
+  int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    fetchUsers();
-  }
+  final List<Widget> _pages = const [
+    ChatListPage(), // Trang tin nhắn
+    FriendsPage(), // Trang bạn bè
+  ];
 
-  void fetchUsers() async {
-    final dio = Dio();
-    final token = box.get("token");
-    dio.options.headers["Authorization"] = "Bearer $token";
-    final response = await dio.get(
-      "$baseUrl/users/friends",
-    );
-    final data = response.data;
+  void _onItemTapped(int index) {
     setState(() {
-      users = data;
+      _selectedIndex = index;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Chat App"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              AppNavigator.goToSetting(context);
-            },
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.message),
+            label: 'Tin nhắn',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Bạn bè',
           ),
         ],
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey,
       ),
-      body: users.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                      radius: 20,
-                      child: user["avatar"] == ""
-                          ? const Icon(Icons.person)
-                          : ClipOval(
-                              child: Image.network(
-                                user["avatar"], // Hiển thị ảnh từ URL
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) {
-                                    return child; // Nếu ảnh đã tải xong
-                                  } else {
-                                    return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
-                                  }
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(Icons
-                                      .person); // Hiển thị icon lỗi nếu ảnh không tải được
-                                }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
-                              ),
-                            )),
-                  title: Text(user["username"]),
-                  onTap: () {
-                    AppNavigator.goToChat(
-                        context, user["_id"], user["username"], user["avatar"]);
-                  },
-                );
-              },
-            ),
     );
   }
 }
