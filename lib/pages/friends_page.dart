@@ -2,6 +2,7 @@ import 'package:chat_app/constants/api_constants.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import '../routes/app_navigator.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -76,6 +77,65 @@ class _FriendsPageState extends State<FriendsPage>
     }
   }
 
+  Future<void> acceptRequest(String requestId, fromUser) async {
+    try {
+      final dio = Dio();
+      final token = box.get("token");
+      dio.options.headers["Authorization"] = "Bearer $token";
+
+      final response = await dio.post("$baseUrl/friends/accept/$requestId");
+      if (response.statusCode == 200) {
+        setState(() {
+          requests.removeWhere((friendReq) => friendReq["_id"] == requestId);
+          friends.add(fromUser);
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Đã chấp nhận ${fromUser["username"]}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ));
+      }
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> declineRequest(String requestId, fromUser) async {
+    try {
+      final dio = Dio();
+      final token = box.get("token");
+      dio.options.headers["Authorization"] = "Bearer $token";
+
+      final response = await dio.post("$baseUrl/friends/decline/$requestId");
+      if (response.statusCode == 200) {
+        setState(() {
+          requests.removeWhere((friendReq) => friendReq["_id"] == requestId);
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Đã từ chối ${fromUser["username"]}'),
+          backgroundColor: Colors.grey,
+          duration: const Duration(seconds: 2),
+        ));
+      }
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget _buildFriendItem(friend) {
     return ListTile(
       leading: CircleAvatar(
@@ -105,9 +165,8 @@ class _FriendsPageState extends State<FriendsPage>
       trailing: IconButton(
         icon: const Icon(Icons.message),
         onPressed: () {
-          // TODO: Mở trang chat riêng
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Mở chat với ${friend["username"]}')));
+          AppNavigator.goToChat(
+              context, friend["_id"], friend["username"], friend["avatar"]);
         },
       ),
     );
@@ -147,17 +206,13 @@ class _FriendsPageState extends State<FriendsPage>
           IconButton(
             icon: const Icon(Icons.check, color: Colors.green),
             onPressed: () {
-              // TODO: Gọi API chấp nhận
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Đã chấp nhận ${fromUser["username"]}')));
+              acceptRequest(request["_id"], fromUser);
             },
           ),
           IconButton(
             icon: const Icon(Icons.close, color: Colors.red),
             onPressed: () {
-              // TODO: Gọi API từ chối
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Đã từ chối ${fromUser["username"]}')));
+              declineRequest(request["_id"], fromUser);
             },
           ),
         ],
