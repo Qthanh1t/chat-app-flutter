@@ -136,40 +136,127 @@ class _FriendsPageState extends State<FriendsPage>
     }
   }
 
+  Future<void> deleteFriend(String friendId) async {
+    try {
+      final dio = Dio();
+      final token = box.get("token");
+      dio.options.headers["Authorization"] = "Bearer $token";
+
+      final response = await dio.delete("$baseUrl/friends/remove/$friendId");
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã xóa bạn thành công!")),
+        );
+        fetchFriends(); // cập nhật lại danh sách bạn bè
+      } else {
+        throw Exception("Xóa thất bại");
+      }
+    } catch (err) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Xóa bạn thất bại."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showFriendOptions(friend) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Xóa bạn'),
+                onTap: () {
+                  Navigator.pop(context); // đóng bottom sheet
+                  _confirmDeleteFriend(friend);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteFriend(friend) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Xác nhận"),
+          content: Text(
+              "Bạn có chắc chắn muốn xóa '${friend["username"]}' khỏi danh sách bạn bè không?"),
+          actions: [
+            TextButton(
+              child: const Text("Xóa", style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                Navigator.of(context).pop(); // đóng dialog
+                deleteFriend(friend["_id"]); // gọi API
+              },
+            ),
+            TextButton(
+              child: const Text("Hủy"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildFriendItem(friend) {
     return ListTile(
-      leading: CircleAvatar(
-          radius: 20,
-          child: friend["avatar"].toString() == ""
-              ? const Icon(Icons.person)
-              : ClipOval(
-                  child: Image.network(
-                    friend["avatar"].toString(), // Hiển thị ảnh từ URL
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child; // Nếu ảnh đã tải xong
-                      } else {
-                        return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
-                      }
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons
-                          .person); // Hiển thị icon lỗi nếu ảnh không tải được
-                    }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
-                  ),
-                )),
-      title: Text("${friend["username"]}"),
-      trailing: IconButton(
-        icon: const Icon(Icons.message),
-        onPressed: () {
-          AppNavigator.goToChat(
-              context, friend["_id"], friend["username"], friend["avatar"]);
-        },
-      ),
-    );
+        leading: CircleAvatar(
+            radius: 20,
+            child: friend["avatar"].toString() == ""
+                ? const Icon(Icons.person)
+                : ClipOval(
+                    child: Image.network(
+                      friend["avatar"].toString(), // Hiển thị ảnh từ URL
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) {
+                          return child; // Nếu ảnh đã tải xong
+                        } else {
+                          return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
+                        }
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons
+                            .person); // Hiển thị icon lỗi nếu ảnh không tải được
+                      }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
+                    ),
+                  )),
+        title: Text("${friend["username"]}"),
+        trailing: SizedBox(
+            width: 96,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.message),
+                  onPressed: () {
+                    AppNavigator.goToChat(context, friend["_id"],
+                        friend["username"], friend["avatar"]);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: () {
+                    _showFriendOptions(friend);
+                  },
+                ),
+              ],
+            )));
   }
 
   Widget _buildRequestItem(request) {
