@@ -19,10 +19,13 @@ class _FriendsPageState extends State<FriendsPage>
   List requests = [];
   final box = Hive.box('chat_app');
 
+  final _searchController = TextEditingController();
+  List _searchResults = [];
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     fetchFriends();
     fetchRequest();
   }
@@ -86,8 +89,8 @@ class _FriendsPageState extends State<FriendsPage>
       final response = await dio.post("$baseUrl/friends/accept/$requestId");
       if (response.statusCode == 200) {
         setState(() {
-          requests.removeWhere((friendReq) => friendReq["_id"] == requestId);
-          friends.add(fromUser);
+          fetchRequest();
+          fetchFriends();
         });
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -116,7 +119,7 @@ class _FriendsPageState extends State<FriendsPage>
       final response = await dio.post("$baseUrl/friends/decline/$requestId");
       if (response.statusCode == 200) {
         setState(() {
-          requests.removeWhere((friendReq) => friendReq["_id"] == requestId);
+          fetchRequest();
         });
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -157,6 +160,52 @@ class _FriendsPageState extends State<FriendsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Xóa bạn thất bại."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _searchFriends(String keyword) async {
+    try {
+      final dio = Dio();
+      final token = box.get("token");
+      dio.options.headers["Authorization"] = "Bearer $token";
+
+      final response = await dio.get("$baseUrl/friends/search?query=$keyword");
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _searchResults = response.data;
+        });
+      }
+    } catch (e) {
+      print("Lỗi tìm kiếm: $e");
+    }
+  }
+
+  Future<void> _sendFriendRequest(String userId) async {
+    try {
+      final dio = Dio();
+      final token = box.get("token");
+      dio.options.headers["Authorization"] = "Bearer $token";
+
+      final response = await dio.post("$baseUrl/friends/request/$userId");
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đã gửi lời mời kết bạn"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Không thể gửi lời mời"),
           backgroundColor: Colors.red,
         ),
       );
@@ -317,6 +366,7 @@ class _FriendsPageState extends State<FriendsPage>
           tabs: const [
             Tab(text: "Danh sách"),
             Tab(text: "Lời mời"),
+            Tab(text: "Thêm bạn bè"),
           ],
         ),
       ),
@@ -333,6 +383,63 @@ class _FriendsPageState extends State<FriendsPage>
             itemCount: requests.length,
             itemBuilder: (context, index) => _buildRequestItem(requests[index]),
           ),
+
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    labelText: "Tìm bạn",
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onSubmitted: (value) => _searchFriends(value),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _searchResults.length,
+                  itemBuilder: (context, index) {
+                    final user = _searchResults[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                          radius: 20,
+                          child: user["avatar"] == ""
+                              ? const Icon(Icons.person)
+                              : ClipOval(
+                                  child: Image.network(
+                                    user["avatar"], // Hiển thị ảnh từ URL
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) {
+                                        return child; // Nếu ảnh đã tải xong
+                                      } else {
+                                        return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
+                                      }
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(Icons
+                                          .person); // Hiển thị icon lỗi nếu ảnh không tải được
+                                    }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
+                                  ),
+                                )),
+                      title: Text(user["username"]),
+                      trailing: ElevatedButton(
+                        onPressed: () => _sendFriendRequest(user["_id"]),
+                        child: const Text("Kết bạn"),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          )
         ],
       ),
     );

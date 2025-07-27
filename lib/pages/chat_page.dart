@@ -55,6 +55,10 @@ class _ChatPageState extends State<ChatPage> {
         });
       } else if ((data["senderId"] == myUserId &&
           data["receiverId"] == widget.receiverId)) {
+        setState(() {
+          messages.removeWhere((msg) => msg["_id"] == null);
+          messages.add(data);
+        });
         _scrollToBottom();
       }
     });
@@ -223,6 +227,7 @@ class _ChatPageState extends State<ChatPage> {
     final myUserId = box.get("userId");
     final isMe = message["senderId"] == myUserId;
     final isSelected = selectedMessageId == message["_id"];
+    final sending = message["_id"] == null;
     return GestureDetector(
         onLongPress: () {
           setState(() {
@@ -237,11 +242,13 @@ class _ChatPageState extends State<ChatPage> {
             constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.7),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.redAccent.withOpacity(0.3)
-                  : isMe
-                      ? Colors.blueAccent
-                      : Colors.grey[300],
+              color: sending
+                  ? Colors.blueAccent.withOpacity(0.3)
+                  : isSelected
+                      ? Colors.redAccent.withOpacity(0.3)
+                      : isMe
+                          ? Colors.blueAccent
+                          : Colors.grey[300],
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(12),
                 topRight: const Radius.circular(12),
