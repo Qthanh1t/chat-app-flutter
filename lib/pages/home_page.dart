@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'chat_list_page.dart';
 import 'friends_page.dart';
+import 'post_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,6 +16,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = const [
     ChatListPage(), // Trang tin nhắn
     FriendsPage(), // Trang bạn bè
+    PostPage(), //Trang post
   ];
 
   void _onItemTapped(int index) {
@@ -41,6 +43,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Bạn bè',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.post_add),
+            label: 'Bài viết',
           ),
         ],
         selectedItemColor: Colors.blueAccent,
