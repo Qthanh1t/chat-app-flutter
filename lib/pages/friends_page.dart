@@ -1,4 +1,5 @@
 import 'package:chat_app/constants/api_constants.dart';
+import 'package:chat_app/utils/image_helper.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -180,7 +181,14 @@ class _FriendsPageState extends State<FriendsPage>
         });
       }
     } catch (e) {
-      print("Lỗi tìm kiếm: $e");
+      if (!mounted) return;
+      //print(err);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -262,29 +270,7 @@ class _FriendsPageState extends State<FriendsPage>
 
   Widget _buildFriendItem(friend) {
     return ListTile(
-        leading: CircleAvatar(
-            radius: 20,
-            child: friend["avatar"].toString() == ""
-                ? const Icon(Icons.person)
-                : ClipOval(
-                    child: Image.network(
-                      friend["avatar"].toString(), // Hiển thị ảnh từ URL
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) {
-                          return child; // Nếu ảnh đã tải xong
-                        } else {
-                          return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
-                        }
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons
-                            .person); // Hiển thị icon lỗi nếu ảnh không tải được
-                      }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
-                    ),
-                  )),
+        leading: ImageHelper.showavatar(friend["avatar"]),
         title: Text("${friend["username"]}"),
         trailing: SizedBox(
             width: 96,
@@ -311,29 +297,7 @@ class _FriendsPageState extends State<FriendsPage>
   Widget _buildRequestItem(request) {
     final fromUser = request['from'];
     return ListTile(
-      leading: CircleAvatar(
-          radius: 20,
-          child: fromUser["avatar"].toString() == ""
-              ? const Icon(Icons.person)
-              : ClipOval(
-                  child: Image.network(
-                    fromUser["avatar"].toString(), // Hiển thị ảnh từ URL
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child; // Nếu ảnh đã tải xong
-                      } else {
-                        return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
-                      }
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons
-                          .person); // Hiển thị icon lỗi nếu ảnh không tải được
-                    }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
-                  ),
-                )),
+      leading: ImageHelper.showavatar(fromUser["avatar"]),
       title: Text(fromUser["username"]),
       subtitle: const Text("Gửi lời mời kết bạn"),
       trailing: Wrap(
@@ -405,30 +369,7 @@ class _FriendsPageState extends State<FriendsPage>
                   itemBuilder: (context, index) {
                     final user = _searchResults[index];
                     return ListTile(
-                      leading: CircleAvatar(
-                          radius: 20,
-                          child: user["avatar"] == ""
-                              ? const Icon(Icons.person)
-                              : ClipOval(
-                                  child: Image.network(
-                                    user["avatar"], // Hiển thị ảnh từ URL
-                                    width: 40,
-                                    height: 40,
-                                    fit: BoxFit.cover,
-                                    loadingBuilder:
-                                        (context, child, loadingProgress) {
-                                      if (loadingProgress == null) {
-                                        return child; // Nếu ảnh đã tải xong
-                                      } else {
-                                        return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
-                                      }
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Icon(Icons
-                                          .person); // Hiển thị icon lỗi nếu ảnh không tải được
-                                    }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
-                                  ),
-                                )),
+                      leading: ImageHelper.showavatar(user["avatar"]),
                       title: Text(user["username"]),
                       trailing: ElevatedButton(
                         onPressed: () => _sendFriendRequest(user["_id"]),

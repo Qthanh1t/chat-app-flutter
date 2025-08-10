@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../constants/api_constants.dart';
+import '../utils/image_helper.dart';
 
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
@@ -57,30 +58,7 @@ class _ChatListPageState extends State<ChatListPage> {
               itemBuilder: (context, index) {
                 final user = users[index];
                 return ListTile(
-                  leading: CircleAvatar(
-                      radius: 20,
-                      child: user["avatar"] == ""
-                          ? const Icon(Icons.person)
-                          : ClipOval(
-                              child: Image.network(
-                                user["avatar"], // Hiển thị ảnh từ URL
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) {
-                                    return child; // Nếu ảnh đã tải xong
-                                  } else {
-                                    return const CircularProgressIndicator(); // Hiển thị loading khi ảnh đang tải
-                                  }
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(Icons
-                                      .person); // Hiển thị icon lỗi nếu ảnh không tải được
-                                }, // Đảm bảo ảnh được hiển thị đúng kích thước trong CircleAvatar
-                              ),
-                            )),
+                  leading: ImageHelper.showavatar(user["avatar"]),
                   title: Text(user["username"]),
                   onTap: () {
                     AppNavigator.goToChat(

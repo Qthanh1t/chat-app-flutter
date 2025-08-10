@@ -234,8 +234,11 @@ class _PostPageState extends State<PostPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ImageHelper.avatarAndName(
-                                post.author.avatar, post.author.username),
+                            ListTile(
+                              leading:
+                                  ImageHelper.showavatar(post.author.avatar),
+                              title: Text(post.author.username),
+                            ),
                             const SizedBox(
                               height: 6,
                             ),
