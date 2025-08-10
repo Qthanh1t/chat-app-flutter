@@ -8,6 +8,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:hive/hive.dart';
 import '../models/post_model.dart';
 import '../utils/image_helper.dart';
+import '../utils/time.dart';
 
 class PostPage extends StatefulWidget {
   const PostPage({super.key});
@@ -238,6 +239,8 @@ class _PostPageState extends State<PostPage> {
                               leading:
                                   ImageHelper.showavatar(post.author.avatar),
                               title: Text(post.author.username),
+                              subtitle:
+                                  Text(Time.formatPostTime(post.createdAt)),
                             ),
                             const SizedBox(
                               height: 6,
