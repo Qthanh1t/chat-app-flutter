@@ -7,7 +7,7 @@ import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:hive/hive.dart';
 import '../models/post_model.dart';
-import '../utils/avatar_name.dart';
+import '../utils/image_helper.dart';
 
 class PostPage extends StatefulWidget {
   const PostPage({super.key});
@@ -234,7 +234,7 @@ class _PostPageState extends State<PostPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            AvatarName.avatarAndName(
+                            ImageHelper.avatarAndName(
                                 post.author.avatar, post.author.username),
                             const SizedBox(
                               height: 6,
@@ -244,7 +244,7 @@ class _PostPageState extends State<PostPage> {
                               const SizedBox(height: 8),
                               Wrap(spacing: 8, runSpacing: 8, children: [
                                 ...post.images.map((imageUrl) =>
-                                    AvatarName.showimage(imageUrl)),
+                                    ImageHelper.showimage(context, imageUrl)),
                               ]),
                             ],
                             const SizedBox(height: 10),

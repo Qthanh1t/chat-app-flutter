@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../utils/image_helper.dart';
 
 class ChatPage extends StatefulWidget {
   final String receiverId;
@@ -180,13 +180,13 @@ class _ChatPageState extends State<ChatPage> {
         final path = response.data["file"]["path"];
         final receiverId = widget.receiverId;
         socketService.sendMessage(receiverId, path, "image");
-        print("Upload thành công: $path");
+        //print("Upload thành công: $path");
       } else {
-        print("Upload thất bại: ${response.statusCode}");
-        print(response.data);
+        //print("Upload thất bại: ${response.statusCode}");
+        //print(response.data);
       }
     } catch (e) {
-      print("Lỗi upload ảnh: $e");
+      //print("Lỗi upload ảnh: $e");
     }
   }
 
@@ -213,7 +213,8 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     } catch (err) {
-      print(err);
+      //print(err);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đã xảy ra lỗi!"),
@@ -259,19 +260,7 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             child: message["type"] == "image"
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: message["content"],
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          const CircularProgressIndicator(),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error),
-                    ),
-                  )
+                ? ImageHelper.showimage(context, message["content"])
                 : Text(
                     message["content"],
                     style: TextStyle(
