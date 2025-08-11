@@ -1,19 +1,22 @@
-import 'package:timeago/timeago.dart' as timeago;
-import 'package:intl/intl.dart';
-
 class Time {
-  // Hàm xử lý định dạng thời gian
-  static formatPostTime(DateTime postTime) {
+  static String formatPostTime(DateTime postTime) {
     final now = DateTime.now();
+    final diff = now.difference(postTime);
 
-    if (postTime.year == now.year &&
-        postTime.month == now.month &&
-        postTime.day == now.day) {
-      // Nếu là hôm nay → "x giờ trước"
-      return timeago.format(postTime, locale: 'vi');
+    if (diff.inMinutes < 1) {
+      return "Vừa xong";
+    } else if (diff.inMinutes < 60) {
+      return "${diff.inMinutes} phút";
+    } else if (diff.inHours < 24) {
+      return "${diff.inHours} giờ";
+    } else if (diff.inDays < 7) {
+      return "${diff.inDays} ngày";
     } else {
-      // Nếu không phải hôm nay → dd/MM/yyyy
-      return DateFormat('dd/MM/yyyy').format(postTime);
+      if (postTime.year == now.year) {
+        return '${postTime.day} thg ${postTime.month}';
+      } else {
+        return '${postTime.day} thg ${postTime.month}, ${postTime.year}';
+      }
     }
   }
 }

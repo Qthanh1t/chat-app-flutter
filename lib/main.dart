@@ -7,13 +7,11 @@ import 'pages/chat_page.dart';
 import 'pages/splash_page.dart';
 import 'routes/app_routes.dart';
 import 'pages/setting_page.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox("chat_app");
-  timeago.setLocaleMessages('vi', timeago.ViMessages());
   runApp(const MyApp());
 }
 
