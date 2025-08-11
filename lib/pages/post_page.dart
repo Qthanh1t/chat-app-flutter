@@ -162,6 +162,35 @@ class _PostPageState extends State<PostPage> {
     );
   }
 
+  Future<void> likeunlikePost(String postId, bool isLiked) async {
+    try {
+      final token = box.get("token");
+      Dio dio = Dio();
+      dio.options.headers["Authorization"] = "Bearer $token";
+
+      final response = await dio.put("$baseUrl/posts/like/$postId");
+      if (response.statusCode == 200) {
+        setState(() {
+          Post post = _posts.firstWhere((post) => post.id == postId);
+          if (isLiked) {
+            post.likes.remove(box.get("userId"));
+          } else {
+            post.likes.add(box.get("userId"));
+          }
+        });
+      }
+    } catch (err) {
+      if (!mounted) return;
+      print(err);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,48 +256,91 @@ class _PostPageState extends State<PostPage> {
                   itemCount: _posts.length,
                   itemBuilder: (context, index) {
                     final post = _posts[index];
+                    bool isLiked = post.likes.contains(box.get("userId"));
                     return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ListTile(
-                              leading:
-                                  ImageHelper.showavatar(post.author.avatar),
-                              title: Text(post.author.username),
-                              subtitle:
-                                  Text(Time.formatPostTime(post.createdAt)),
-                            ),
-                            const SizedBox(
-                              height: 6,
-                            ),
-                            Text(post.content),
-                            if (post.images.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Wrap(spacing: 8, runSpacing: 8, children: [
-                                ...post.images.map((imageUrl) =>
-                                    ImageHelper.showimage(context, imageUrl)),
-                              ]),
-                            ],
-                            const SizedBox(height: 10),
-                            Row(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.thumb_up, size: 20),
-                                const SizedBox(width: 4),
-                                Text('${post.likes.length}'),
-                                const SizedBox(width: 16),
-                                const Icon(Icons.comment, size: 20),
-                                const SizedBox(width: 4),
-                                Text('${post.comments.length}'),
-                              ],
-                            )
-                          ],
-                        ),
-                      ),
-                    );
+                                ListTile(
+                                  leading: ImageHelper.showavatar(
+                                      post.author.avatar),
+                                  title: Text(post.author.username),
+                                  subtitle:
+                                      Text(Time.formatPostTime(post.createdAt)),
+                                ),
+                                const SizedBox(
+                                  height: 6,
+                                ),
+                                Text(post.content),
+                                if (post.images.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Wrap(spacing: 8, runSpacing: 8, children: [
+                                    ...post.images.map((imageUrl) =>
+                                        ImageHelper.showimage(
+                                            context, imageUrl)),
+                                  ]),
+                                ],
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () {
+                                        likeunlikePost(post.id, isLiked);
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.thumb_up,
+                                                size: 20,
+                                                color: isLiked
+                                                    ? Colors.blue
+                                                    : Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${post.likes.length}',
+                                              style: TextStyle(
+                                                color: isLiked
+                                                    ? Colors.blue
+                                                    : Colors.grey,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () {
+                                        // Xử lý khi bấm Comment
+                                        print("Comment pressed");
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.comment,
+                                                size: 20, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Text('${post.comments.length}',
+                                                style: const TextStyle(
+                                                    color: Colors.grey)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ]),
+                        ));
                   })
             ],
           ),
