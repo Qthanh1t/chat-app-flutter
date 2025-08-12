@@ -6,9 +6,11 @@ import 'dart:io';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:hive/hive.dart';
+import 'package:provider/provider.dart';
 import '../models/post_model.dart';
 import '../utils/image_helper.dart';
 import '../utils/time.dart';
+import '../provider/post_provider.dart';
 
 class PostPage extends StatefulWidget {
   const PostPage({super.key});
@@ -19,7 +21,7 @@ class PostPage extends StatefulWidget {
 
 class _PostPageState extends State<PostPage> {
   final box = Hive.box("chat_app");
-  List<Post> _posts = [];
+  //List<Post> _posts = [];
   final TextEditingController _contentController = TextEditingController();
   final List<File> _imageFiles = [];
   bool _isLoading = false;
@@ -31,19 +33,48 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> fetchPost() async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      // final dio = Dio();
+      // final token = box.get("token");
+      // dio.options.headers["Authorization"] = "Bearer $token";
 
-      final response = await dio.get("$baseUrl/posts/posts");
-      if (response.statusCode == 200) {
-        final data = response.data as List;
-        setState(() {
-          _posts = data
-              .map((post) => Post.fromJson(post as Map<String, dynamic>))
-              .toList();
-        });
-      }
+      // final response = await dio.get("$baseUrl/posts/posts");
+      // if (response.statusCode == 200) {
+      //   final data = response.data as List;
+      //   setState(() {
+      //     _posts = data
+      //         .map((post) => Post.fromJson(post as Map<String, dynamic>))
+      //         .toList();
+      //   });
+      // }
+      context.read<PostProvider>().fetchPosts();
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> fetchPostById(String postId) async {
+    try {
+      // final dio = Dio();
+      // final token = box.get("token");
+      // dio.options.headers["Authorization"] = "Bearer $token";
+
+      // final response = await dio.get("$baseUrl/posts/post/$postId");
+      // if (response.statusCode == 200) {
+      //   final index = _posts.indexWhere((post) => post.id == postId);
+      //   setState(() {
+      //     if (index != -1) {
+      //       _posts[index] =
+      //           Post.fromJson(response.data as Map<String, dynamic>);
+      //     }
+      //   });
+      // }
+      context.read<PostProvider>().fetchPostById(postId);
     } catch (err) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -164,24 +195,25 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> likeunlikePost(String postId, bool isLiked) async {
     try {
-      final token = box.get("token");
-      Dio dio = Dio();
-      dio.options.headers["Authorization"] = "Bearer $token";
+      // final token = box.get("token");
+      // Dio dio = Dio();
+      // dio.options.headers["Authorization"] = "Bearer $token";
 
-      final response = await dio.put("$baseUrl/posts/like/$postId");
-      if (response.statusCode == 200) {
-        setState(() {
-          Post post = _posts.firstWhere((post) => post.id == postId);
-          if (isLiked) {
-            post.likes.remove(box.get("userId"));
-          } else {
-            post.likes.add(box.get("userId"));
-          }
-        });
-      }
+      // final response = await dio.put("$baseUrl/posts/like/$postId");
+      // if (response.statusCode == 200) {
+      //   setState(() {
+      //     Post post = _posts.firstWhere((post) => post.id == postId);
+      //     if (isLiked) {
+      //       post.likes.remove(box.get("userId"));
+      //     } else {
+      //       post.likes.add(box.get("userId"));
+      //     }
+      //   });
+      // }
+      context.read<PostProvider>().toggleLike(postId, box.get("userId"));
     } catch (err) {
       if (!mounted) return;
-      print(err);
+      //print(err);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đã xảy ra lỗi!"),
@@ -191,8 +223,168 @@ class _PostPageState extends State<PostPage> {
     }
   }
 
+  Future<void> commentPost(String postId, String commentText) async {
+    try {
+      // final token = box.get("token");
+      // Dio dio = Dio();
+      // dio.options.headers["Authorization"] = "Bearer $token";
+
+      // final response = await dio
+      //     .post("$baseUrl/posts/comment/$postId", data: {"text": commentText});
+      // if (response.statusCode == 200) {
+      //   setState(() {
+      //     fetchPostById(postId);
+      //   });
+      // }
+      context.read<PostProvider>().addComment(postId, commentText);
+    } catch (err) {
+      if (!mounted) return;
+      //print(err);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void showCommentsSheet(BuildContext context, Post post) {
+    final TextEditingController commentController = TextEditingController();
+
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true, // cho phép full height
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (_) {
+          return Consumer<PostProvider>(
+            builder: (context, postProvider, child) {
+              final updatedPost = postProvider.getPostById(post.id);
+              return SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.thumb_up, size: 20),
+                              const SizedBox(width: 6),
+                              Text('${updatedPost?.likes.length}'),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Icon(Icons.comment, size: 20),
+                              const SizedBox(width: 6),
+                              Text('${updatedPost?.comments.length}'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+
+                    // Body
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: updatedPost?.comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = updatedPost?.comments[index];
+                          return buildCommentItem(comment!);
+                        },
+                      ),
+                    ),
+
+                    // Footer nhập comment
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        bottom: MediaQuery.of(context).viewInsets.bottom +
+                            12, // tránh bị che bởi bàn phím
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: commentController,
+                              decoration: const InputDecoration(
+                                hintText: "Nhập bình luận...",
+                                border: OutlineInputBorder(),
+                                contentPadding:
+                                    EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.send, color: Colors.blue),
+                            onPressed: () {
+                              final text = commentController.text.trim();
+                              if (text.isNotEmpty) {
+                                commentPost(post.id, text);
+                                commentController.clear();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        });
+  }
+
+  Widget buildCommentItem(Comment comment) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(131, 219, 219, 219),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar + username
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ImageHelper.showavatar(comment.user.avatar),
+              const SizedBox(width: 8),
+              Text(
+                comment.user.username,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Nội dung comment
+          Text(
+            comment.text,
+            style: const TextStyle(fontSize: 15),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final posts = context.watch<PostProvider>().posts;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bài viết'),
@@ -253,9 +445,9 @@ class _PostPageState extends State<PostPage> {
               ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _posts.length,
+                  itemCount: posts.length,
                   itemBuilder: (context, index) {
-                    final post = _posts[index];
+                    final post = posts[index];
                     bool isLiked = post.likes.contains(box.get("userId"));
                     return Card(
                         margin: const EdgeInsets.symmetric(
@@ -319,8 +511,7 @@ class _PostPageState extends State<PostPage> {
                                     InkWell(
                                       borderRadius: BorderRadius.circular(8),
                                       onTap: () {
-                                        // Xử lý khi bấm Comment
-                                        print("Comment pressed");
+                                        showCommentsSheet(context, post);
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(

@@ -72,4 +72,24 @@ class Post {
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
+
+  Post copyWith({
+    String? id,
+    UserInfo? author,
+    String? content,
+    List<String>? images,
+    List<String>? likes,
+    List<Comment>? comments,
+    DateTime? createdAt,
+  }) {
+    return Post(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      content: content ?? this.content,
+      images: images ?? this.images,
+      likes: likes ?? this.likes,
+      comments: comments ?? this.comments,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
