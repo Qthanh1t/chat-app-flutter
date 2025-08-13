@@ -357,22 +357,14 @@ class _PostPageState extends State<PostPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar + username
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              ImageHelper.showavatar(comment.user.avatar),
-              const SizedBox(width: 8),
-              Text(
-                comment.user.username,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          ListTile(
+            leading: ImageHelper.showavatar(comment.user.avatar),
+            title: Text(comment.user.username),
+            subtitle: Text(Time.formatPostTime(comment.createdAt)),
           ),
-          const SizedBox(height: 8),
-          // Nội dung comment
+          const SizedBox(
+            height: 6,
+          ),
           Text(
             comment.text,
             style: const TextStyle(fontSize: 15),
