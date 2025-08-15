@@ -1,8 +1,7 @@
 import 'package:chat_app/routes/app_navigator.dart';
-import 'package:dio/dio.dart';
+import 'package:chat_app/service/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import '../constants/api_constants.dart';
 import '../utils/image_helper.dart';
 
 class ChatListPage extends StatefulWidget {
@@ -25,11 +24,9 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   void fetchUsers() async {
-    final dio = Dio();
-    final token = box.get("token");
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
     final response = await dio.get(
-      "$baseUrl/users/friends",
+      "/users/friends",
     );
     final data = response.data;
     setState(() {

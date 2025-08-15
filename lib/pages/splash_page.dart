@@ -1,7 +1,6 @@
+import 'package:chat_app/service/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
-import '../constants/api_constants.dart';
 import '../routes/app_navigator.dart';
 
 class SplashPage extends StatefulWidget {
@@ -30,9 +29,8 @@ class _SplashPageState extends State<SplashPage> {
     }
 
     try {
-      final dio = Dio();
-      dio.options.headers["Authorization"] = "Bearer $token";
-      final response = await dio.get("$baseUrl/users/me");
+      final dio = ApiClient.instance.dio;
+      final response = await dio.get("/users/me");
 
       if (response.statusCode == 200) {
         final data = response.data;

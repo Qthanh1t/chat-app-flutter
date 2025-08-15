@@ -1,7 +1,7 @@
 import 'package:chat_app/routes/app_navigator.dart';
+import 'package:chat_app/service/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import '../constants/api_constants.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -27,10 +27,10 @@ class _RegisterPageState extends State<RegisterPage> {
       } else if (passwordController1.text != passwordController2.text) {
         throw Exception("Hãy nhập lại chính xác mật khẩu!");
       }
-      final dio = Dio();
+      final dio = ApiClient.instance.dio;
       dio.options.headers["Content-Type"] = "application/json";
       final response = await dio.post(
-        "$baseUrl/users/register",
+        "/users/register",
         data: {
           "username": usernameController.text,
           "email": emailController.text,

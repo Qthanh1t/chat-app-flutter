@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import '../service/api_client.dart';
 import '../service/socket_service.dart';
 import 'package:image_picker/image_picker.dart';
-import '../constants/api_constants.dart';
 import 'dart:io';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -97,11 +97,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> fetchMessages(int page) async {
-    final dio = Dio();
-    final token = box.get("token");
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
     final response = await dio.get(
-      "$baseUrl/messages/${widget.receiverId}?page=$page&limit=15",
+      "/messages/${widget.receiverId}?page=$page&limit=15",
     );
 
     final data = response.data["messages"].reversed.toList();
@@ -135,8 +133,6 @@ class _ChatPageState extends State<ChatPage> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
-      final token = box.get("token");
-
       File imageFile = File(pickedFile.path);
 
       // Copy sang thư mục documents để tránh lỗi cache temp
@@ -144,24 +140,22 @@ class _ChatPageState extends State<ChatPage> {
       String newPath = "${appDocDir.path}/${basename(imageFile.path)}";
       File copiedImage = await imageFile.copy(newPath);
 
-      await uploadImageDio(copiedImage, token);
+      await uploadImageDio(copiedImage);
     }
   }
 
-  Future<void> uploadImageDio(File imageFile, String token) async {
-    final dio = Dio();
-
-    // Set token vào header
-    dio.options.headers["Authorization"] = "Bearer $token";
+  Future<void> uploadImageDio(File imageFile) async {
+    final dio = ApiClient.instance.dio;
 
     // Lấy mime type của file từ path
     final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
+
     final typeSplit = mimeType.split('/');
 
     // Tạo multipart file với contentType đúng
     final multipartFile = await MultipartFile.fromFile(
       imageFile.path,
-      filename: basename(imageFile.path),
+      filename: imageFile.path.split('/').last,
       contentType: MediaType(typeSplit[0], typeSplit[1]),
     );
 
@@ -172,7 +166,7 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final response = await dio.post(
-        "$baseUrl/upload",
+        "/upload",
         data: formData,
       );
 
@@ -192,13 +186,11 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> deleteMessage(BuildContext context, String messageId) async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
       if (messageId.isEmpty) {
         throw Exception("Đã xảy ra lỗi");
       }
-      final response = await dio.delete("$baseUrl/messages/delete/$messageId");
+      final response = await dio.delete("/messages/delete/$messageId");
       if (response.statusCode == 200) {
         setState(() {
           messages.removeWhere((msg) => msg["_id"] == messageId);

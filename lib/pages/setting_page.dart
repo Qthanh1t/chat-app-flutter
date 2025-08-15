@@ -8,7 +8,8 @@ import '../routes/app_navigator.dart';
 import 'package:dio/dio.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
-import '../constants/api_constants.dart';
+import '../service/api_client.dart';
+import '../auth/auth_repository.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -21,22 +22,18 @@ class SettingPage extends StatefulWidget {
 class _SettingPageState extends State<SettingPage> {
   final box = Hive.box("chat_app");
 
-  Future<void> setAvatar() async {
+  Future<void> setAvatar(BuildContext context) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
-      final token = box.get("token");
-      final dio = Dio();
+      final dio = ApiClient.instance.dio;
       File imageFile = File(pickedFile.path);
 
       // Copy sang thư mục documents để tránh lỗi cache temp
       Directory appDocDir = await getApplicationDocumentsDirectory();
       String newPath = "${appDocDir.path}/${basename(imageFile.path)}";
       File copiedImage = await imageFile.copy(newPath);
-
-      // Set token vào header
-      dio.options.headers["Authorization"] = "Bearer $token";
 
       // Lấy mime type của file từ path
       final mimeType = lookupMimeType(copiedImage.path) ?? 'image/jpeg';
@@ -56,7 +53,7 @@ class _SettingPageState extends State<SettingPage> {
 
       try {
         final response = await dio.put(
-          "$baseUrl/users/setavatar",
+          "/users/setavatar",
           data: formData,
         );
 
@@ -66,13 +63,20 @@ class _SettingPageState extends State<SettingPage> {
             box.put("avatar", path);
           });
 
-          print("Upload thành công");
+          //print("Upload thành công");
         } else {
-          print("Upload thất bại: ${response.statusCode}");
-          print(response.data);
+          //print("Upload thất bại: ${response.statusCode}");
+          //print(response.data);
         }
       } catch (e) {
-        print("Lỗi upload ảnh: $e");
+        //print("Lỗi upload ảnh: $e");
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đã xảy ra lỗi!"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -132,11 +136,9 @@ class _SettingPageState extends State<SettingPage> {
   Future<void> callApiChangeUsername(
       BuildContext context, String newUsername) async {
     try {
-      final token = box.get("token");
-      final dio = Dio();
-      dio.options.headers["Authorization"] = "Bearer $token";
-      final response = await dio.put("$baseUrl/users/changeusername",
-          data: {"newUsername": newUsername});
+      final dio = ApiClient.instance.dio;
+      final response = await dio
+          .put("/users/changeusername", data: {"newUsername": newUsername});
 
       if (response.statusCode == 200) {
         setState(() {
@@ -153,7 +155,7 @@ class _SettingPageState extends State<SettingPage> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print("Lỗi: $e");
+      //print("Lỗi: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đổi tên không thành công!"),
@@ -237,11 +239,9 @@ class _SettingPageState extends State<SettingPage> {
   Future<void> callApiChangePassword(
       BuildContext context, String newPassword) async {
     try {
-      final token = box.get("token");
-      final dio = Dio();
-      dio.options.headers["Authorization"] = "Bearer $token";
-      final response = await dio.put("$baseUrl/users/changepassword",
-          data: {"newPassword": newPassword});
+      final dio = ApiClient.instance.dio;
+      final response = await dio
+          .put("/users/changepassword", data: {"newPassword": newPassword});
 
       if (response.statusCode == 200) {
         if (!mounted) return;
@@ -266,11 +266,7 @@ class _SettingPageState extends State<SettingPage> {
   }
 
   void logout(BuildContext context) async {
-    final box = Hive.box("chat_app");
-    await box.delete("token");
-    await box.delete("userId");
-    await box.delete("username");
-    await box.delete("avatar");
+    AuthRepository().logout();
     AppNavigator.goToLogin(context);
   }
 
@@ -321,7 +317,7 @@ class _SettingPageState extends State<SettingPage> {
               ListTile(
                 leading: const Icon(Icons.image),
                 title: const Text("Đổi ảnh đại diện"),
-                onTap: setAvatar,
+                onTap: () => setAvatar(context),
               ),
               ListTile(
                 leading: const Icon(Icons.person),

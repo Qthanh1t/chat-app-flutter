@@ -1,17 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
-import '../constants/api_constants.dart';
 import '../models/post_model.dart';
+import 'api_client.dart';
 
 class PostApiService {
   final box = Hive.box("chat_app");
 
   Future<List<Post>> fetchPost() async {
-    final dio = Dio();
-    final token = box.get("token");
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
 
-    final response = await dio.get("$baseUrl/posts/posts");
+    final response = await dio.get("/posts/posts");
     if (response.statusCode == 200) {
       final data = response.data as List;
       return data
@@ -23,11 +21,9 @@ class PostApiService {
   }
 
   Future<Post> fetchPostById(String postId) async {
-    final dio = Dio();
-    final token = box.get("token");
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
 
-    final response = await dio.get("$baseUrl/posts/post/$postId");
+    final response = await dio.get("/posts/post/$postId");
     if (response.statusCode == 200) {
       return Post.fromJson(response.data as Map<String, dynamic>);
     } else {
@@ -36,11 +32,9 @@ class PostApiService {
   }
 
   Future<dynamic> submitPost(FormData formData) async {
-    Dio dio = Dio();
-    final token = box.get('token');
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
     final response = await dio.post(
-      "$baseUrl/posts/posts",
+      "/posts/posts",
       data: formData,
       options: Options(contentType: 'multipart/form-data'),
     );
@@ -53,11 +47,9 @@ class PostApiService {
   }
 
   Future<List<dynamic>> toggleLike(String postId) async {
-    final token = box.get("token");
-    Dio dio = Dio();
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
 
-    final response = await dio.put("$baseUrl/posts/like/$postId");
+    final response = await dio.put("/posts/like/$postId");
     if (response.statusCode == 200) {
       return response.data["likes"];
     } else {
@@ -66,12 +58,10 @@ class PostApiService {
   }
 
   Future<List<dynamic>> commentPost(String postId, String commentText) async {
-    final token = box.get("token");
-    Dio dio = Dio();
-    dio.options.headers["Authorization"] = "Bearer $token";
+    final dio = ApiClient.instance.dio;
 
-    final response = await dio
-        .post("$baseUrl/posts/comment/$postId", data: {"text": commentText});
+    final response =
+        await dio.post("/posts/comment/$postId", data: {"text": commentText});
     if (response.statusCode == 200) {
       return response.data;
     } else {

@@ -1,9 +1,8 @@
-import 'package:chat_app/constants/api_constants.dart';
 import 'package:chat_app/utils/image_helper.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../routes/app_navigator.dart';
+import '../service/api_client.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -39,11 +38,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> fetchFriends() async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.get("$baseUrl/friends/list");
+      final response = await dio.get("/friends/list");
       if (response.statusCode == 200) {
         setState(() {
           friends = response.data;
@@ -62,11 +59,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> fetchRequest() async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.get("$baseUrl/friends/requests");
+      final response = await dio.get("/friends/requests");
       if (response.statusCode == 200) {
         requests = response.data;
       }
@@ -83,11 +78,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> acceptRequest(String requestId, fromUser) async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.post("$baseUrl/friends/accept/$requestId");
+      final response = await dio.post("/friends/accept/$requestId");
       if (response.statusCode == 200) {
         setState(() {
           fetchRequest();
@@ -113,11 +106,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> declineRequest(String requestId, fromUser) async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.post("$baseUrl/friends/decline/$requestId");
+      final response = await dio.post("/friends/decline/$requestId");
       if (response.statusCode == 200) {
         setState(() {
           fetchRequest();
@@ -142,11 +133,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> deleteFriend(String friendId) async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.delete("$baseUrl/friends/remove/$friendId");
+      final response = await dio.delete("/friends/remove/$friendId");
 
       if (response.statusCode == 200) {
         if (!mounted) return;
@@ -169,11 +158,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> _searchFriends(String keyword) async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.get("$baseUrl/friends/search?query=$keyword");
+      final response = await dio.get("/friends/search?query=$keyword");
 
       if (response.statusCode == 200) {
         setState(() {
@@ -194,11 +181,9 @@ class _FriendsPageState extends State<FriendsPage>
 
   Future<void> _sendFriendRequest(String userId) async {
     try {
-      final dio = Dio();
-      final token = box.get("token");
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
 
-      final response = await dio.post("$baseUrl/friends/request/$userId");
+      final response = await dio.post("/friends/request/$userId");
 
       if (response.statusCode == 200) {
         if (!mounted) return;

@@ -1,8 +1,8 @@
+import 'package:chat_app/auth/token_storage.dart';
 import 'package:chat_app/routes/app_navigator.dart';
-import 'package:dio/dio.dart';
+import '../service/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import '../constants/api_constants.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,10 +19,10 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> login() async {
     try {
-      final dio = Dio();
+      final dio = ApiClient.instance.dio;
       dio.options.headers["Content-Type"] = "application/json";
       final response = await dio.post(
-        "$baseUrl/users/login",
+        "/auth/login",
         data: {
           "email": emailController.text,
           "password": passwordController.text
@@ -30,7 +30,9 @@ class _LoginPageState extends State<LoginPage> {
       );
       if (response.statusCode == 200) {
         final data = response.data;
-        box.put("token", data["token"]);
+        await TokenStorage.instance.saveTokens(
+            accessToken: data["accessToken"],
+            refreshToken: data["refreshToken"]);
         box.put("userId", data["user"]["id"]);
         box.put("username", data["user"]["username"]);
         box.put("avatar", data["user"]["avatar"]);

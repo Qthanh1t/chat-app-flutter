@@ -9,11 +9,13 @@ import 'pages/chat_page.dart';
 import 'pages/splash_page.dart';
 import 'routes/app_routes.dart';
 import 'pages/setting_page.dart';
+import 'package:chat_app/service/api_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox("chat_app");
+  await ApiClient.instance.init();
   runApp(
     MultiProvider(
       providers: [

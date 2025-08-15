@@ -1,4 +1,3 @@
-import 'package:chat_app/constants/api_constants.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -8,6 +7,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../models/post_model.dart';
+import '../service/api_client.dart';
 import '../utils/image_helper.dart';
 import '../utils/time.dart';
 import '../provider/post_provider.dart';
@@ -33,19 +33,6 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> fetchPost() async {
     try {
-      // final dio = Dio();
-      // final token = box.get("token");
-      // dio.options.headers["Authorization"] = "Bearer $token";
-
-      // final response = await dio.get("$baseUrl/posts/posts");
-      // if (response.statusCode == 200) {
-      //   final data = response.data as List;
-      //   setState(() {
-      //     _posts = data
-      //         .map((post) => Post.fromJson(post as Map<String, dynamic>))
-      //         .toList();
-      //   });
-      // }
       context.read<PostProvider>().fetchPosts();
     } catch (err) {
       if (!mounted) return;
@@ -60,20 +47,6 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> fetchPostById(String postId) async {
     try {
-      // final dio = Dio();
-      // final token = box.get("token");
-      // dio.options.headers["Authorization"] = "Bearer $token";
-
-      // final response = await dio.get("$baseUrl/posts/post/$postId");
-      // if (response.statusCode == 200) {
-      //   final index = _posts.indexWhere((post) => post.id == postId);
-      //   setState(() {
-      //     if (index != -1) {
-      //       _posts[index] =
-      //           Post.fromJson(response.data as Map<String, dynamic>);
-      //     }
-      //   });
-      // }
       context.read<PostProvider>().fetchPostById(postId);
     } catch (err) {
       if (!mounted) return;
@@ -125,11 +98,9 @@ class _PostPageState extends State<PostPage> {
         })),
       });
 
-      Dio dio = Dio();
-      final token = box.get('token');
-      dio.options.headers["Authorization"] = "Bearer $token";
+      final dio = ApiClient.instance.dio;
       final response = await dio.post(
-        "$baseUrl/posts/posts",
+        "/posts/posts",
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );
@@ -195,21 +166,6 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> likeunlikePost(String postId, bool isLiked) async {
     try {
-      // final token = box.get("token");
-      // Dio dio = Dio();
-      // dio.options.headers["Authorization"] = "Bearer $token";
-
-      // final response = await dio.put("$baseUrl/posts/like/$postId");
-      // if (response.statusCode == 200) {
-      //   setState(() {
-      //     Post post = _posts.firstWhere((post) => post.id == postId);
-      //     if (isLiked) {
-      //       post.likes.remove(box.get("userId"));
-      //     } else {
-      //       post.likes.add(box.get("userId"));
-      //     }
-      //   });
-      // }
       context.read<PostProvider>().toggleLike(postId, box.get("userId"));
     } catch (err) {
       if (!mounted) return;
@@ -225,17 +181,6 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> commentPost(String postId, String commentText) async {
     try {
-      // final token = box.get("token");
-      // Dio dio = Dio();
-      // dio.options.headers["Authorization"] = "Bearer $token";
-
-      // final response = await dio
-      //     .post("$baseUrl/posts/comment/$postId", data: {"text": commentText});
-      // if (response.statusCode == 200) {
-      //   setState(() {
-      //     fetchPostById(postId);
-      //   });
-      // }
       context.read<PostProvider>().addComment(postId, commentText);
     } catch (err) {
       if (!mounted) return;
