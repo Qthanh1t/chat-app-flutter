@@ -26,7 +26,7 @@ class _ChatListPageState extends State<ChatListPage> {
   void fetchUsers() async {
     final dio = ApiClient.instance.dio;
     final response = await dio.get(
-      "/users/friends",
+      "/messages/conversations",
     );
     final data = response.data;
     setState(() {
@@ -53,7 +53,7 @@ class _ChatListPageState extends State<ChatListPage> {
           : ListView.builder(
               itemCount: users.length,
               itemBuilder: (context, index) {
-                final user = users[index];
+                final user = users[index]["user"];
                 return ListTile(
                   leading: ImageHelper.showavatar(user["avatar"]),
                   title: Text(user["username"]),
