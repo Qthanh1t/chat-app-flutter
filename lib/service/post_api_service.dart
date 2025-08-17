@@ -6,12 +6,12 @@ import 'api_client.dart';
 class PostApiService {
   final box = Hive.box("chat_app");
 
-  Future<List<Post>> fetchPost() async {
+  Future<List<Post>> fetchPost(int page) async {
     final dio = ApiClient.instance.dio;
 
-    final response = await dio.get("/posts/posts");
+    final response = await dio.get("/posts/posts?page=$page&limit=10");
     if (response.statusCode == 200) {
-      final data = response.data as List;
+      final data = response.data["posts"] as List;
       return data
           .map((post) => Post.fromJson(post as Map<String, dynamic>))
           .toList();

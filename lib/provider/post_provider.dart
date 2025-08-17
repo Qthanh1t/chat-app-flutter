@@ -5,15 +5,40 @@ import '../service/post_api_service.dart'; // file gọi API
 
 class PostProvider extends ChangeNotifier {
   final postApiService = PostApiService();
-  List<Post> _posts = [];
+  final List<Post> _posts = [];
+  int _currentPage = 1;
+  bool _isLoading = false;
+  bool _hasMore = true;
 
   List<Post> get posts => _posts;
+  bool get isLoading => _isLoading;
+  bool get hasMore => _hasMore;
 
   // Lấy tất cả post
-  Future<void> fetchPosts() async {
-    final data = await postApiService.fetchPost(); // gọi API
-    _posts = data;
-    notifyListeners();
+  Future<void> fetchPosts({bool refresh = false}) async {
+    if (_isLoading || !_hasMore) return;
+
+    _isLoading = true;
+
+    if (refresh) {
+      _currentPage = 1;
+      _posts.clear();
+      _hasMore = true;
+    }
+    try {
+      final newPosts = await postApiService.fetchPost(_currentPage);
+      if (newPosts.isEmpty) {
+        _hasMore = false;
+      } else {
+        _posts.addAll(newPosts);
+        _currentPage++;
+      }
+    } catch (e) {
+      throw Exception("Lỗi tải bài viết");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Lấy một post và cập nhật
@@ -62,7 +87,7 @@ class PostProvider extends ChangeNotifier {
   }
 
   Future<void> summitPost(FormData formData) async {
-    await postApiService.submitPost(formData); // API add comment
-    await fetchPosts(); // Cập nhật lại post sau khi comment
+    await postApiService.submitPost(formData);
+    await fetchPosts(refresh: true); // load lại từ đầu
   }
 }

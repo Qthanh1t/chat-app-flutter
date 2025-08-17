@@ -7,7 +7,6 @@ import 'package:http_parser/http_parser.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../models/post_model.dart';
-import '../service/api_client.dart';
 import '../utils/image_helper.dart';
 import '../utils/time.dart';
 import '../provider/post_provider.dart';
@@ -25,15 +24,29 @@ class _PostPageState extends State<PostPage> {
   final TextEditingController _contentController = TextEditingController();
   final List<File> _imageFiles = [];
   bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
   @override
   void initState() {
     super.initState();
-    fetchPost();
+    fetchPosts();
+
+    _scrollController.addListener(() {
+      if (!context.read<PostProvider>().isLoading &&
+          _scrollController.position.extentAfter < 200) {
+        fetchPosts();
+      }
+    });
   }
 
-  Future<void> fetchPost() async {
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> fetchPosts({bool refresh = false}) async {
     try {
-      context.read<PostProvider>().fetchPosts();
+      await context.read<PostProvider>().fetchPosts(refresh: refresh);
     } catch (err) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,7 +60,7 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> fetchPostById(String postId) async {
     try {
-      context.read<PostProvider>().fetchPostById(postId);
+      await context.read<PostProvider>().fetchPostById(postId);
     } catch (err) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,18 +111,8 @@ class _PostPageState extends State<PostPage> {
         })),
       });
 
-      final dio = ApiClient.instance.dio;
-      final response = await dio.post(
-        "/posts/posts",
-        data: formData,
-        options: Options(contentType: 'multipart/form-data'),
-      );
+      await context.read<PostProvider>().summitPost(formData);
 
-      if (response.statusCode == 201) {
-        setState(() {
-          fetchPost();
-        });
-      }
       _contentController.clear();
       _imageFiles.clear();
     } catch (err) {
@@ -181,7 +184,7 @@ class _PostPageState extends State<PostPage> {
 
   Future<void> commentPost(String postId, String commentText) async {
     try {
-      context.read<PostProvider>().addComment(postId, commentText);
+      await context.read<PostProvider>().addComment(postId, commentText);
     } catch (err) {
       if (!mounted) return;
       //print(err);
@@ -322,18 +325,21 @@ class _PostPageState extends State<PostPage> {
   @override
   Widget build(BuildContext context) {
     final posts = context.watch<PostProvider>().posts;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bài viết'),
       ),
       body: RefreshIndicator(
-        onRefresh: fetchPost,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              //phan tao bai viet
-              Padding(
+        onRefresh: () => fetchPosts(refresh: true),
+        child: ListView.builder(
+          controller: _scrollController,
+          itemCount:
+              posts.length + 2, // +1 cho form tạo bài viết, +1 cho loading
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              // --- PHẦN TẠO BÀI VIẾT ---
+              return Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
@@ -342,21 +348,21 @@ class _PostPageState extends State<PostPage> {
                       decoration: InputDecoration(
                         hintText: "Bạn đang nghĩ gì",
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                       ),
                       maxLines: null,
                     ),
-                    const SizedBox(
-                      height: 10,
-                    ),
+                    const SizedBox(height: 10),
                     if (_imageFiles.isNotEmpty) _buildSelectedImagesPreview(),
                     Row(
                       children: [
                         TextButton(
-                            onPressed: pickImages,
-                            child: const Icon(Icons.photo)),
+                          onPressed: pickImages,
+                          child: const Icon(Icons.photo),
+                        ),
                         const Spacer(),
                         ElevatedButton(
                           onPressed: _isLoading ? null : submitPost,
@@ -377,101 +383,105 @@ class _PostPageState extends State<PostPage> {
                     ),
                   ],
                 ),
-              ),
-              //Phan hien thi bai viet
-              ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: posts.length,
-                  itemBuilder: (context, index) {
-                    final post = posts[index];
-                    bool isLiked = post.likes.contains(box.get("userId"));
-                    return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  leading: ImageHelper.showavatar(
-                                      post.author.avatar),
-                                  title: Text(post.author.username),
-                                  subtitle:
-                                      Text(Time.formatPostTime(post.createdAt)),
-                                ),
-                                const SizedBox(
-                                  height: 6,
-                                ),
-                                Text(post.content),
-                                if (post.images.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Wrap(spacing: 8, runSpacing: 8, children: [
-                                    ...post.images.map((imageUrl) =>
-                                        ImageHelper.showimage(
-                                            context, imageUrl)),
-                                  ]),
+              );
+            } else if (index <= posts.length) {
+              // --- HIỂN THỊ BÀI VIẾT ---
+              final post = posts[index - 1];
+              bool isLiked = post.likes.contains(box.get("userId"));
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        leading: ImageHelper.showavatar(post.author.avatar),
+                        title: Text(post.author.username),
+                        subtitle: Text(Time.formatPostTime(post.createdAt)),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(post.content),
+                      if (post.images.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ...post.images.map(
+                              (imageUrl) =>
+                                  ImageHelper.showimage(context, imageUrl),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () {
+                              likeunlikePost(post.id, isLiked);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.thumb_up,
+                                      size: 20,
+                                      color:
+                                          isLiked ? Colors.blue : Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${post.likes.length}',
+                                    style: TextStyle(
+                                      color:
+                                          isLiked ? Colors.blue : Colors.grey,
+                                    ),
+                                  ),
                                 ],
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    InkWell(
-                                      borderRadius: BorderRadius.circular(8),
-                                      onTap: () {
-                                        likeunlikePost(post.id, isLiked);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.thumb_up,
-                                                size: 20,
-                                                color: isLiked
-                                                    ? Colors.blue
-                                                    : Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '${post.likes.length}',
-                                              style: TextStyle(
-                                                color: isLiked
-                                                    ? Colors.blue
-                                                    : Colors.grey,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    InkWell(
-                                      borderRadius: BorderRadius.circular(8),
-                                      onTap: () {
-                                        showCommentsSheet(context, post);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.comment,
-                                                size: 20, color: Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Text('${post.comments.length}',
-                                                style: const TextStyle(
-                                                    color: Colors.grey)),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ]),
-                        ));
-                  })
-            ],
-          ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () {
+                              showCommentsSheet(context, post);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.comment,
+                                      size: 20, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text('${post.comments.length}',
+                                      style:
+                                          const TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              // --- LOADING HOẶC HẾT DỮ LIỆU ---
+              return context.read<PostProvider>().hasMore
+                  ? const Center(
+                      child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ))
+                  : const SizedBox.shrink();
+            }
+          },
         ),
       ),
     );
