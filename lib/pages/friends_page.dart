@@ -323,16 +323,23 @@ class _FriendsPageState extends State<FriendsPage>
         controller: _tabController,
         children: [
           // Danh sách bạn bè
-          ListView.builder(
-            itemCount: friends.length,
-            itemBuilder: (context, index) => _buildFriendItem(friends[index]),
+          RefreshIndicator(
+            onRefresh: fetchFriends,
+            child: ListView.builder(
+              itemCount: friends.length,
+              itemBuilder: (context, index) => _buildFriendItem(friends[index]),
+            ),
           ),
           // Lời mời kết bạn
-          ListView.builder(
-            itemCount: requests.length,
-            itemBuilder: (context, index) => _buildRequestItem(requests[index]),
+          RefreshIndicator(
+            onRefresh: fetchRequest,
+            child: ListView.builder(
+              itemCount: requests.length,
+              itemBuilder: (context, index) =>
+                  _buildRequestItem(requests[index]),
+            ),
           ),
-
+          //Thêm bạn bè
           Column(
             children: [
               Padding(
