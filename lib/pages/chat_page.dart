@@ -35,6 +35,8 @@ class _ChatPageState extends State<ChatPage> {
   final _scrollController = ScrollController();
   String? selectedMessageId;
   int currentPage = 1;
+  bool isLoading = false;
+  bool hasMore = true;
   @override
   void initState() {
     super.initState();
@@ -48,45 +50,26 @@ class _ChatPageState extends State<ChatPage> {
               data["receiverId"] == widget.receiverId &&
               data["type"] == "image")) {
         setState(() {
-          messages.add(data);
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom();
+          messages.insert(0, data);
         });
       } else if ((data["senderId"] == myUserId &&
           data["receiverId"] == widget.receiverId)) {
         setState(() {
           messages.removeWhere((msg) => msg["_id"] == null);
-          messages.add(data);
+          messages.insert(0, data);
         });
-        _scrollToBottom();
       }
     });
     //load message history
-    fetchMessages(currentPage).then((_) {
-      // Sau khi load lần đầu xong → scroll xuống cuối
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom();
-      });
-    });
+    fetchMessages(currentPage);
     _scrollController.addListener(() {
-      if (_scrollController.position.atEdge &&
-          _scrollController.position.pixels == 0) {
-        // đang ở đầu list
-        currentPage++;
-        fetchMessages(currentPage);
+      if (_scrollController.position.extentAfter < 200) {
+        if (hasMore && !isLoading) {
+          currentPage++;
+          fetchMessages(currentPage);
+        }
       }
     });
-  }
-
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
   }
 
   @override
@@ -97,15 +80,26 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> fetchMessages(int page) async {
-    final dio = ApiClient.instance.dio;
-    final response = await dio.get(
-      "/messages/${widget.receiverId}?page=$page&limit=15",
-    );
-
-    final data = response.data["messages"].reversed.toList();
-    setState(() {
-      messages.insertAll(0, data); // thêm vào đầu danh sách
-    });
+    if (isLoading) return;
+    isLoading = true;
+    try {
+      final dio = ApiClient.instance.dio;
+      final response = await dio.get(
+        "/messages/${widget.receiverId}?page=$page&limit=15",
+      );
+      if (response.statusCode == 200) {
+        final data = response.data["messages"].toList();
+        if (data.isEmpty) {
+          hasMore = false;
+        } else {
+          setState(() {
+            messages.addAll(data);
+          });
+        }
+      }
+    } finally {
+      isLoading = false;
+    }
   }
 
   void send() {
@@ -121,7 +115,7 @@ class _ChatPageState extends State<ChatPage> {
       };
 
       setState(() {
-        messages.add(newMessage);
+        messages.insert(0, newMessage);
       });
       socketService.sendMessage(receiverId, content, "text");
       messageController.clear();
@@ -287,6 +281,7 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
+              reverse: true,
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 return buildMessageBubble(context, messages[index]);
