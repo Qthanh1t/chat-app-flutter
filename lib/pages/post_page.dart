@@ -207,10 +207,16 @@ class _PostPageState extends State<PostPage> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         builder: (_) {
+          final screenHeight = MediaQuery.of(context).size.height;
+          final topPadding = MediaQuery.of(context).padding.top;
           return Consumer<PostProvider>(
             builder: (context, postProvider, child) {
               final updatedPost = postProvider.getPostById(post.id);
               return SafeArea(
+                  child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: screenHeight - topPadding, // không tràn status bar
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.max,
                   children: [
@@ -288,7 +294,7 @@ class _PostPageState extends State<PostPage> {
                     ),
                   ],
                 ),
-              );
+              ));
             },
           );
         });

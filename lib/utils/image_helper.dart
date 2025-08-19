@@ -63,8 +63,8 @@ class ImageHelper {
         borderRadius: BorderRadius.circular(8),
         child: CachedNetworkImage(
           imageUrl: image,
-          width: 170,
-          height: 170,
+          width: MediaQuery.of(context).size.width * 0.4,
+          height: MediaQuery.of(context).size.width * 0.4,
           fit: BoxFit.cover,
           placeholder: (context, url) => const SizedBox(
             width: 30,
