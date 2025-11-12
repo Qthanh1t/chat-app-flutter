@@ -5,4 +5,5 @@ class AppRoutes {
   static const home = '/home';
   static const chat = '/chat';
   static const setting = '/setting';
+  static const createGroup = '/create-group';
 }

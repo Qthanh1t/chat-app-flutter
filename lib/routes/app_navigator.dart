@@ -41,6 +41,19 @@ class AppNavigator {
     );
   }
 
+  //Đến màn tạo nhóm
+  static void goToCreateGroup(BuildContext context) {
+    Navigator.of(context).pushNamed(AppRoutes.createGroup);
+  }
+
+  // Thay thế trang hiện tại bằng màn chat (dùng sau khi tạo nhóm)
+  static void replaceWithChat(BuildContext context, Conversation conversation) {
+    Navigator.of(context).pushReplacementNamed(
+      AppRoutes.chat,
+      arguments: conversation,
+    );
+  }
+
   // Quay lại màn trước đó
   static void goBack(BuildContext context) {
     Navigator.of(context).pop();

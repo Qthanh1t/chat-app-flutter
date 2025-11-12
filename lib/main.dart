@@ -1,3 +1,4 @@
+import 'package:chat_app/pages/create_group_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:chat_app/provider/post_provider.dart';
@@ -41,6 +42,7 @@ class MyApp extends StatelessWidget {
         AppRoutes.register: (context) => const RegisterPage(),
         AppRoutes.home: (context) => const HomePage(),
         AppRoutes.setting: (context) => const SettingPage(),
+        AppRoutes.createGroup: (context) => const CreateGroupPage(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == AppRoutes.chat) {

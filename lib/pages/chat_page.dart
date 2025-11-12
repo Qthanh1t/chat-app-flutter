@@ -281,10 +281,12 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             ImageHelper.showavatar(displayAvatar),
             const SizedBox(width: 8),
-            Text(
-              displayName,
-              style: const TextStyle(color: Colors.black),
-            ),
+            Expanded(
+              child: Text(
+                displayName,
+                style: const TextStyle(color: Colors.black),
+              ),
+            )
           ],
         ),
       ),

@@ -77,9 +77,10 @@ class _ChatListPageState extends State<ChatListPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            // Điều hướng đến màn hình tạo nhóm (xem Bước 7)
-            // AppNavigator.goToCreateGroup(context);
+            // Điều hướng đến màn hình tạo nhóm
+            AppNavigator.goToCreateGroup(context);
           },
+          tooltip: 'Tạo nhóm mới',
           child: const Icon(Icons.group_add),
         ),
         body: RefreshIndicator(
