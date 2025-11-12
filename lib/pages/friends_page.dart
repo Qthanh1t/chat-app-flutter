@@ -1,6 +1,7 @@
 import 'package:chat_app/utils/image_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import '../models/conversation_model.dart';
 import '../routes/app_navigator.dart';
 import '../service/api_client.dart';
 
@@ -51,6 +52,53 @@ class _FriendsPageState extends State<FriendsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đã xảy ra lỗi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _goToChatWithFriend(dynamic friend) async {
+    // 1. Hiển thị Dialog (dùng 'context' của widget)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    try {
+      final dio = ApiClient.instance.dio;
+
+      final response = await dio.post(
+        "/conversations",
+        data: {
+          "type": "private",
+          "participants": [friend["_id"]] // Chỉ cần gửi ID người kia
+        },
+      );
+
+      // Kiểm tra 'mounted' TRƯỚC khi pop
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Đóng Dialog
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Parse conversation
+        final conversation = Conversation.fromJson(response.data);
+        if (mounted) {
+          AppNavigator.goToChat(context, conversation);
+        }
+      } else {
+        throw Exception("Lỗi tạo hội thoại");
+      }
+    } catch (err) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Đóng Dialog
+      print(err);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Không thể bắt đầu chat! Lỗi: ${err.toString()}"),
           backgroundColor: Colors.red,
         ),
       );
@@ -265,8 +313,7 @@ class _FriendsPageState extends State<FriendsPage>
                 IconButton(
                   icon: const Icon(Icons.message),
                   onPressed: () {
-                    AppNavigator.goToChat(context, friend["_id"],
-                        friend["username"], friend["avatar"]);
+                    _goToChatWithFriend(friend);
                   },
                 ),
                 IconButton(

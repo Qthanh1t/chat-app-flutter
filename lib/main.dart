@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:chat_app/provider/post_provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'models/conversation_model.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
@@ -43,16 +44,34 @@ class MyApp extends StatelessWidget {
       },
       onGenerateRoute: (settings) {
         if (settings.name == AppRoutes.chat) {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => ChatPage(
-              receiverId: args['receiverId'],
-              receiverName: args['receiverName'],
-              receiverAvatar: args['receiverAvatar'],
-            ),
-          );
+          final args = settings.arguments;
+
+          if (args is Conversation) {
+            return MaterialPageRoute(
+              builder: (context) => ChatPage(
+                conversation: args,
+              ),
+            );
+          }
+          return _errorRoute("Lỗi: Dữ liệu hội thoại không hợp lệ.");
         }
-        return null;
+
+        return _errorRoute("Lỗi: Không tìm thấy trang.");
+      },
+    );
+  }
+
+  static MaterialPageRoute _errorRoute(String message) {
+    return MaterialPageRoute(
+      builder: (context) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Lỗi'),
+          ),
+          body: Center(
+            child: Text(message),
+          ),
+        );
       },
     );
   }

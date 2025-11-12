@@ -10,16 +10,12 @@ import 'package:dio/dio.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import '../utils/image_helper.dart';
+import 'package:chat_app/models/conversation_model.dart';
 
 class ChatPage extends StatefulWidget {
-  final String receiverId;
-  final String receiverName;
-  final String receiverAvatar;
-  const ChatPage(
-      {super.key,
-      required this.receiverId,
-      required this.receiverName,
-      required this.receiverAvatar});
+  final Conversation conversation;
+
+  const ChatPage({super.key, required this.conversation});
 
   @override
   State<StatefulWidget> createState() {
@@ -37,27 +33,32 @@ class _ChatPageState extends State<ChatPage> {
   int currentPage = 1;
   bool isLoading = false;
   bool hasMore = true;
+  late String myUserId;
+
   @override
   void initState() {
     super.initState();
-    final myUserId = box.get("userId");
+    myUserId = box.get("userId");
     socketService.connect();
     socketService.onMessage((data) {
       if (!mounted) return;
-      if ((data["senderId"] == widget.receiverId &&
-              data["receiverId"] == myUserId) ||
-          (data["senderId"] == myUserId &&
-              data["receiverId"] == widget.receiverId &&
-              data["type"] == "image")) {
-        setState(() {
-          messages.insert(0, data);
-        });
-      } else if ((data["senderId"] == myUserId &&
-          data["receiverId"] == widget.receiverId)) {
-        setState(() {
-          messages.removeWhere((msg) => msg["_id"] == null);
-          messages.insert(0, data);
-        });
+      // Logic mới: chỉ cần kiểm tra conversationId
+      if (data["conversationId"] == widget.conversation.id) {
+        // Xử lý tin nhắn "đang gửi"
+        final sendingMsgIndex = messages.indexWhere(
+            (msg) => msg["_id"] == null && msg["content"] == data["content"]);
+
+        if (sendingMsgIndex != -1) {
+          // Tìm thấy tin nhắn đang gửi, cập nhật nó
+          setState(() {
+            messages[sendingMsgIndex] = data;
+          });
+        } else {
+          // Tin nhắn mới từ người khác (hoặc ảnh của mình)
+          setState(() {
+            messages.insert(0, data);
+          });
+        }
       }
     });
     //load message history
@@ -85,7 +86,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final dio = ApiClient.instance.dio;
       final response = await dio.get(
-        "/messages/${widget.receiverId}?page=$page&limit=15",
+        "/messages/${widget.conversation.id}?page=$page&limit=15",
       );
       if (response.statusCode == 200) {
         final data = response.data["messages"].toList();
@@ -103,13 +104,12 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void send() {
-    final receiverId = widget.receiverId;
     final content = messageController.text;
-    final myUserId = box.get("userId");
     if (content.isNotEmpty) {
       final newMessage = {
+        "_id": null, // Đang gửi, chưa có ID
         "senderId": myUserId,
-        "receiverId": receiverId,
+        "conversationId": widget.conversation.id,
         "content": content,
         "type": "text",
       };
@@ -117,7 +117,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         messages.insert(0, newMessage);
       });
-      socketService.sendMessage(receiverId, content, "text");
+      socketService.sendMessage(widget.conversation.id, content, "text");
       messageController.clear();
     }
   }
@@ -166,8 +166,7 @@ class _ChatPageState extends State<ChatPage> {
 
       if (response.statusCode == 200) {
         final path = response.data["file"]["path"];
-        final receiverId = widget.receiverId;
-        socketService.sendMessage(receiverId, path, "image");
+        socketService.sendMessage(widget.conversation.id, path, "image");
         //print("Upload thành công: $path");
       } else {
         //print("Upload thất bại: ${response.statusCode}");
@@ -211,10 +210,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget buildMessageBubble(BuildContext context, dynamic message) {
-    final myUserId = box.get("userId");
-    final isMe = message["senderId"] == myUserId;
     final isSelected = selectedMessageId == message["_id"];
     final sending = message["_id"] == null;
+    final isMe = (sending ? message["senderId"] : message["senderId"]["_id"]) ==
+        myUserId;
+
     return GestureDetector(
         onLongPress: () {
           setState(() {
@@ -222,44 +222,56 @@ class _ChatPageState extends State<ChatPage> {
           });
         },
         child: Align(
-          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7),
-            decoration: BoxDecoration(
-              color: sending
-                  ? Colors.blueAccent.withOpacity(0.3)
-                  : isSelected
-                      ? Colors.redAccent.withOpacity(0.3)
-                      : isMe
-                          ? Colors.blueAccent
-                          : Colors.grey[300],
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(12),
-                topRight: const Radius.circular(12),
-                bottomLeft:
-                    isMe ? const Radius.circular(12) : const Radius.circular(0),
-                bottomRight:
-                    isMe ? const Radius.circular(0) : const Radius.circular(12),
-              ),
-            ),
-            child: message["type"] == "image"
-                ? ImageHelper.showimage(context, message["content"])
-                : Text(
-                    message["content"],
-                    style: TextStyle(
-                      color: isMe ? Colors.white : Colors.black,
-                      fontSize: 16,
+            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+            child: Row(
+              children: [
+                !isMe
+                    ? ImageHelper.showavatar(message["senderId"]["avatar"])
+                    : const Expanded(child: SizedBox.shrink()),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin:
+                      const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.7),
+                  decoration: BoxDecoration(
+                    color: sending
+                        ? Colors.blueAccent.withOpacity(0.3)
+                        : isSelected
+                            ? Colors.redAccent.withOpacity(0.3)
+                            : isMe
+                                ? Colors.blueAccent
+                                : Colors.grey[300],
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(12),
+                      topRight: const Radius.circular(12),
+                      bottomLeft: isMe
+                          ? const Radius.circular(12)
+                          : const Radius.circular(0),
+                      bottomRight: isMe
+                          ? const Radius.circular(0)
+                          : const Radius.circular(12),
                     ),
                   ),
-          ),
-        ));
+                  child: message["type"] == "image"
+                      ? ImageHelper.showimage(context, message["content"])
+                      : Text(
+                          message["content"],
+                          style: TextStyle(
+                            color: isMe ? Colors.white : Colors.black,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
+              ],
+            )));
   }
 
   @override
   Widget build(BuildContext context) {
+    final displayName = widget.conversation.getDisplayName(myUserId);
+    final displayAvatar = widget.conversation.getDisplayAvatar(myUserId);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -267,10 +279,10 @@ class _ChatPageState extends State<ChatPage> {
         leading: const BackButton(color: Colors.black),
         title: Row(
           children: [
-            ImageHelper.showavatar(widget.receiverAvatar),
+            ImageHelper.showavatar(displayAvatar),
             const SizedBox(width: 8),
             Text(
-              widget.receiverName,
+              displayName,
               style: const TextStyle(color: Colors.black),
             ),
           ],

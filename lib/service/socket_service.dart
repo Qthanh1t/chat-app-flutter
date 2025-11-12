@@ -28,11 +28,11 @@ class SocketService {
     });
   }
 
-  void sendMessage(String receiverId, String content, String type) {
+  void sendMessage(String conversationId, String content, String type) {
     final senderId = box.get("userId");
     socket.emit("send_message", {
       "senderId": senderId,
-      "receiverId": receiverId,
+      "conversationId": conversationId,
       "content": content,
       "type": type
     });

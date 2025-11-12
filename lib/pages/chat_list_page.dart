@@ -3,6 +3,7 @@ import 'package:chat_app/service/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../utils/image_helper.dart';
+import 'package:chat_app/models/conversation_model.dart';
 
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
@@ -14,32 +15,39 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  List users = [];
+  List<Conversation> conversations = [];
   final box = Hive.box("chat_app");
   bool isLoading = false;
+  late String myUserId;
 
   @override
   void initState() {
     super.initState();
-    fetchUsers();
+    myUserId = box.get("userId");
+    fetchConversations();
   }
 
-  Future<void> fetchUsers() async {
-    isLoading = true;
+  Future<void> fetchConversations() async {
+    if (isLoading) return;
+    setState(() {
+      isLoading = true;
+    });
     try {
       final dio = ApiClient.instance.dio;
       final response = await dio.get(
-        "/messages/conversations",
+        "/conversations",
       );
       if (response.statusCode == 200) {
         final data = response.data;
         setState(() {
-          users = data;
+          conversations = data
+              .map<Conversation>((json) => Conversation.fromJson(json))
+              .toList();
         });
       }
     } catch (err) {
       if (!mounted) return;
-      //print(err);
+      print(err);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đã xảy ra lỗi!"),
@@ -47,7 +55,9 @@ class _ChatListPageState extends State<ChatListPage> {
         ),
       );
     } finally {
-      isLoading = false;
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -65,26 +75,41 @@ class _ChatListPageState extends State<ChatListPage> {
             ),
           ],
         ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            // Điều hướng đến màn hình tạo nhóm (xem Bước 7)
+            // AppNavigator.goToCreateGroup(context);
+          },
+          child: const Icon(Icons.group_add),
+        ),
         body: RefreshIndicator(
-          onRefresh: fetchUsers,
+          onRefresh: fetchConversations,
           child: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(),
-                )
-              : users.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : conversations.isEmpty
                   ? const Center(
-                      child:
-                          Text("Hãy kết bạn và bắt đầu một cuộc trò chuyện."))
+                      child: Text("Hãy bắt đầu một cuộc trò chuyện."))
                   : ListView.builder(
-                      itemCount: users.length,
+                      itemCount: conversations.length,
                       itemBuilder: (context, index) {
-                        final user = users[index]["user"];
+                        final convo = conversations[index];
+                        final displayName = convo.getDisplayName(myUserId);
+                        final displayAvatar = convo.getDisplayAvatar(myUserId);
+                        final lastMsg = convo.lastMessage;
+
                         return ListTile(
-                          leading: ImageHelper.showavatar(user["avatar"]),
-                          title: Text(user["username"]),
+                          leading: ImageHelper.showavatar(displayAvatar),
+                          title: Text(displayName,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(
+                            lastMsg != null ? lastMsg['content'] : '...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           onTap: () {
-                            AppNavigator.goToChat(context, user["_id"],
-                                user["username"], user["avatar"]);
+                            // Dùng AppNavigator mới
+                            AppNavigator.goToChat(context, convo);
                           },
                         );
                       },

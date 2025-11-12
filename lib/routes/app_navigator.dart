@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/conversation_model.dart';
 import 'app_routes.dart';
 
 class AppNavigator {
@@ -26,15 +27,10 @@ class AppNavigator {
   }
 
   // Đến màn Chat, truyền receiverId và receiverName
-  static void goToChat(BuildContext context, String receiverId,
-      String receiverName, String receiverAvatar) {
+  static void goToChat(BuildContext context, Conversation conversation) {
     Navigator.of(context).pushNamed(
       AppRoutes.chat,
-      arguments: {
-        'receiverId': receiverId,
-        'receiverName': receiverName,
-        'receiverAvatar': receiverAvatar,
-      },
+      arguments: conversation, // Truyền thẳng object
     );
   }
 
