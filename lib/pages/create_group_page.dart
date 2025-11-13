@@ -6,6 +6,8 @@ import 'package:chat_app/service/api_client.dart';
 import 'package:chat_app/utils/image_helper.dart';
 import 'package:flutter/material.dart';
 
+import '../service/socket_service.dart';
+
 class CreateGroupPage extends StatefulWidget {
   const CreateGroupPage({super.key});
 
@@ -15,6 +17,7 @@ class CreateGroupPage extends StatefulWidget {
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
   final _groupNameController = TextEditingController();
+  final socketService = SocketService();
   final Set<String> _selectedFriendIds = {};
   List<User> _friends = [];
   bool _isLoading = true;
@@ -100,6 +103,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       if (response.statusCode == 201) {
         final newConvo = Conversation.fromJson(response.data);
         if (!mounted) return;
+        socketService.joinConversationRoom(newConvo.id);
         // Dùng replaceWithChat để thay thế trang này bằng trang chat
         AppNavigator.replaceWithChat(context, newConvo);
       }

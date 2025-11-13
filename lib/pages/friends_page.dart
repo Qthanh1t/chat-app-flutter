@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../models/conversation_model.dart';
 import '../routes/app_navigator.dart';
 import '../service/api_client.dart';
+import '../service/socket_service.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -19,7 +20,7 @@ class _FriendsPageState extends State<FriendsPage>
   List friends = [];
   List requests = [];
   final box = Hive.box('chat_app');
-
+  final socketService = SocketService();
   final _searchController = TextEditingController();
   List _searchResults = [];
 
@@ -86,6 +87,7 @@ class _FriendsPageState extends State<FriendsPage>
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Parse conversation
         final conversation = Conversation.fromJson(response.data);
+        socketService.joinConversationRoom(conversation.id);
         if (mounted) {
           AppNavigator.goToChat(context, conversation);
         }

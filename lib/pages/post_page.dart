@@ -20,11 +20,13 @@ class PostPage extends StatefulWidget {
 
 class _PostPageState extends State<PostPage> {
   final box = Hive.box("chat_app");
+
   //List<Post> _posts = [];
   final TextEditingController _contentController = TextEditingController();
   final List<File> _imageFiles = [];
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -117,7 +119,7 @@ class _PostPageState extends State<PostPage> {
       _imageFiles.clear();
     } catch (err) {
       if (!mounted) return;
-      //print(err);
+      print(err);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Đã xảy ra lỗi!"),

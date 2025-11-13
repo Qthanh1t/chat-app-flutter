@@ -2,6 +2,7 @@ import 'package:chat_app/service/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../routes/app_navigator.dart';
+import '../service/socket_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -15,6 +16,7 @@ class _SplashPageState extends State<SplashPage> {
   void initState() {
     super.initState();
     checkToken();
+    SocketService().connect();
   }
 
   Future<void> checkToken() async {

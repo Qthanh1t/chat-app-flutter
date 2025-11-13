@@ -35,12 +35,14 @@ class _ChatPageState extends State<ChatPage> {
   bool hasMore = true;
   late String myUserId;
 
+  late final Function(dynamic) _messageListener;
+
   @override
   void initState() {
     super.initState();
     myUserId = box.get("userId");
-    socketService.connect();
-    socketService.onMessage((data) {
+
+    _messageListener = (data) {
       if (!mounted) return;
       // Logic mới: chỉ cần kiểm tra conversationId
       if (data["conversationId"] == widget.conversation.id) {
@@ -60,7 +62,9 @@ class _ChatPageState extends State<ChatPage> {
           });
         }
       }
-    });
+    };
+
+    socketService.onMessage(_messageListener);
     //load message history
     fetchMessages(currentPage);
     _scrollController.addListener(() {
@@ -76,7 +80,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _scrollController.dispose();
-    socketService.offMessage(); // nếu có
+    socketService.offMessage(_messageListener);
     super.dispose();
   }
 
