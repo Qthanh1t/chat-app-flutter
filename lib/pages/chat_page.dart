@@ -44,19 +44,15 @@ class _ChatPageState extends State<ChatPage> {
 
     _messageListener = (data) {
       if (!mounted) return;
-      // Logic mới: chỉ cần kiểm tra conversationId
       if (data["conversationId"] == widget.conversation.id) {
-        // Xử lý tin nhắn "đang gửi"
         final sendingMsgIndex = messages.indexWhere(
             (msg) => msg["_id"] == null && msg["content"] == data["content"]);
 
         if (sendingMsgIndex != -1) {
-          // Tìm thấy tin nhắn đang gửi, cập nhật nó
           setState(() {
             messages[sendingMsgIndex] = data;
           });
         } else {
-          // Tin nhắn mới từ người khác (hoặc ảnh của mình)
           setState(() {
             messages.insert(0, data);
           });
@@ -65,7 +61,6 @@ class _ChatPageState extends State<ChatPage> {
     };
 
     socketService.onMessage(_messageListener);
-    //load message history
     fetchMessages(currentPage);
     _scrollController.addListener(() {
       if (_scrollController.position.extentAfter < 200) {
@@ -111,7 +106,7 @@ class _ChatPageState extends State<ChatPage> {
     final content = messageController.text;
     if (content.isNotEmpty) {
       final newMessage = {
-        "_id": null, // Đang gửi, chưa có ID
+        "_id": null,
         "senderId": myUserId,
         "conversationId": widget.conversation.id,
         "content": content,
@@ -132,8 +127,6 @@ class _ChatPageState extends State<ChatPage> {
 
     if (pickedFile != null) {
       File imageFile = File(pickedFile.path);
-
-      // Copy sang thư mục documents để tránh lỗi cache temp
       Directory appDocDir = await getApplicationDocumentsDirectory();
       String newPath = "${appDocDir.path}/${basename(imageFile.path)}";
       File copiedImage = await imageFile.copy(newPath);
@@ -144,49 +137,33 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> uploadImageDio(File imageFile) async {
     final dio = ApiClient.instance.dio;
-
-    // Lấy mime type của file từ path
     final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
-
     final typeSplit = mimeType.split('/');
-
-    // Tạo multipart file với contentType đúng
     final multipartFile = await MultipartFile.fromFile(
       imageFile.path,
       filename: imageFile.path.split('/').last,
       contentType: MediaType(typeSplit[0], typeSplit[1]),
     );
 
-    // Tạo form data
     final formData = FormData.fromMap({
       "image": multipartFile,
     });
 
     try {
-      final response = await dio.post(
-        "/upload",
-        data: formData,
-      );
-
+      final response = await dio.post("/upload", data: formData);
       if (response.statusCode == 200) {
         final path = response.data["file"]["path"];
         socketService.sendMessage(widget.conversation.id, path, "image");
-        //print("Upload thành công: $path");
-      } else {
-        //print("Upload thất bại: ${response.statusCode}");
-        //print(response.data);
       }
     } catch (e) {
-      //print("Lỗi upload ảnh: $e");
+      // Ignore
     }
   }
 
   Future<void> deleteMessage(BuildContext context, String messageId) async {
     try {
       final dio = ApiClient.instance.dio;
-      if (messageId.isEmpty) {
-        throw Exception("Đã xảy ra lỗi");
-      }
+      if (messageId.isEmpty) throw Exception("Lỗi");
       final response = await dio.delete("/messages/delete/$messageId");
       if (response.statusCode == 200) {
         setState(() {
@@ -195,80 +172,103 @@ class _ChatPageState extends State<ChatPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Đã xóa tin nhắn"),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
+              content: Text("Đã xóa tin nhắn"), backgroundColor: Colors.green),
         );
       }
     } catch (err) {
-      //print(err);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Đã xảy ra lỗi!"),
-          backgroundColor: Colors.red,
-        ),
+            content: Text("Lỗi khi xóa!"), backgroundColor: Colors.red),
       );
     }
   }
 
+  // --- UI COMPONENTS ---
+
   Widget buildMessageBubble(BuildContext context, dynamic message) {
-    final isSelected = selectedMessageId == message["_id"];
-    final sending = message["_id"] == null;
-    final isMe = (sending ? message["senderId"] : message["senderId"]["_id"]) ==
-        myUserId;
+    final sending = message["_id"] == null; // Kiểm tra trạng thái sending
+    final isSelected = sending ? false : selectedMessageId == message["_id"];
+    final senderId = sending ? message["senderId"] : message["senderId"]["_id"];
+    final isMe = senderId == myUserId;
 
     return GestureDetector(
-        onLongPress: () {
+      onLongPress: () {
+        if (!sending) {
           setState(() {
             selectedMessageId = message["_id"];
           });
-        },
-        child: Align(
-            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-            child: Row(
-              children: [
-                !isMe
-                    ? ImageHelper.showavatar(message["senderId"]["avatar"])
-                    : const Expanded(child: SizedBox.shrink()),
-                Container(
+        }
+      },
+      child: Container(
+        color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        child: Row(
+          mainAxisAlignment:
+              isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isMe) ...[
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: Colors.transparent,
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: ClipOval(
+                      child: ImageHelper.showavatar(
+                          message["senderId"]["avatar"])),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+
+            // --- PHẦN THAY ĐỔI: Bọc bong bóng chat trong Opacity ---
+            Opacity(
+              // Nếu đang sending thì mờ đi (0.5), ngược lại hiển thị rõ (1.0)
+              opacity: sending ? 0.5 : 1.0,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7),
+                child: Container(
                   padding: const EdgeInsets.all(12),
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.7),
                   decoration: BoxDecoration(
-                    color: sending
-                        ? Colors.blueAccent.withOpacity(0.3)
-                        : isSelected
-                            ? Colors.redAccent.withOpacity(0.3)
-                            : isMe
-                                ? Colors.blueAccent
-                                : Colors.grey[300],
+                    gradient: isMe
+                        ? const LinearGradient(
+                            colors: [Color(0xFF6A11CB), Color(0xFF2575FC)])
+                        : null,
+                    color: isMe ? null : Colors.grey[200],
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(12),
-                      topRight: const Radius.circular(12),
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
                       bottomLeft: isMe
-                          ? const Radius.circular(12)
-                          : const Radius.circular(0),
+                          ? const Radius.circular(18)
+                          : const Radius.circular(4),
                       bottomRight: isMe
-                          ? const Radius.circular(0)
-                          : const Radius.circular(12),
+                          ? const Radius.circular(4)
+                          : const Radius.circular(18),
                     ),
                   ),
                   child: message["type"] == "image"
-                      ? ImageHelper.showimage(context, message["content"])
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: ImageHelper.showimage(
+                              context, message["content"]),
+                        )
                       : Text(
                           message["content"],
                           style: TextStyle(
-                            color: isMe ? Colors.white : Colors.black,
+                            color: isMe ? Colors.white : Colors.black87,
                             fontSize: 16,
                           ),
                         ),
                 ),
-              ],
-            )));
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -277,18 +277,32 @@ class _ChatPageState extends State<ChatPage> {
     final displayAvatar = widget.conversation.getDisplayAvatar(myUserId);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 1,
-        leading: const BackButton(color: Colors.black),
+        elevation: 0.5,
+        leading: const BackButton(color: Colors.black87),
+        titleSpacing: 0,
         title: Row(
           children: [
-            ImageHelper.showavatar(displayAvatar),
-            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.grey[200],
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: ClipOval(child: ImageHelper.showavatar(displayAvatar)),
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 displayName,
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
               ),
             )
           ],
@@ -297,74 +311,121 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              reverse: true,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                return buildMessageBubble(context, messages[index]);
+            child: GestureDetector(
+              onTap: () {
+                if (selectedMessageId != null) {
+                  setState(() => selectedMessageId = null);
+                }
+                FocusScope.of(context).unfocus();
               },
+              child: Container(
+                color: Colors.transparent,
+                child: ListView.builder(
+                  controller: _scrollController,
+                  reverse: true,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    return buildMessageBubble(context, messages[index]);
+                  },
+                ),
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: pickAndSendImage,
-                  icon: const Icon(Icons.image),
-                ),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(30),
+          if (selectedMessageId == null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    offset: const Offset(0, -2),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: pickAndSendImage,
+                      icon: const Icon(Icons.image,
+                          color: Color(0xFF2575FC), size: 28),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                    child: TextField(
-                      controller: messageController,
-                      decoration: const InputDecoration(
-                        hintText: "Nhập tin nhắn...",
-                        border: InputBorder.none,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: TextField(
+                          controller: messageController,
+                          decoration: const InputDecoration(
+                            hintText: "Nhập tin nhắn...",
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                            isDense: true,
+                          ),
+                          minLines: 1,
+                          maxLines: 4,
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    InkWell(
+                      onTap: send,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                          ),
+                        ),
+                        child: const Icon(Icons.send_rounded,
+                            color: Colors.white, size: 20),
+                      ),
+                    )
+                  ],
                 ),
-                IconButton(
-                  onPressed: send,
-                  icon: const Icon(Icons.send),
-                )
-              ],
+              ),
             ),
-          )
         ],
       ),
       bottomNavigationBar: selectedMessageId != null
           ? BottomAppBar(
-              color: Colors.grey[200],
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  IconButton(
-                    onPressed: () async {
-                      await deleteMessage(context, selectedMessageId!);
-                      setState(() {
-                        selectedMessageId = null;
-                      });
-                    },
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    tooltip: 'Xóa tin nhắn',
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        selectedMessageId = null;
-                      });
-                    },
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                    tooltip: 'Hủy chọn',
-                  ),
-                ],
+              color: Colors.white,
+              elevation: 10,
+              surfaceTintColor: Colors.white,
+              child: SizedBox(
+                height: 50,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => setState(() => selectedMessageId = null),
+                      icon: const Icon(Icons.close, color: Colors.grey),
+                      label: const Text("Hủy",
+                          style: TextStyle(color: Colors.black87)),
+                    ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        await deleteMessage(context, selectedMessageId!);
+                        setState(() => selectedMessageId = null);
+                      },
+                      icon: const Icon(Icons.delete_outline,
+                          color: Colors.redAccent),
+                      label: const Text("Xóa tin nhắn",
+                          style: TextStyle(color: Colors.redAccent)),
+                    ),
+                  ],
+                ),
               ),
             )
           : null,

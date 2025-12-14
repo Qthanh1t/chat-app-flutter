@@ -3,16 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 
 class ImageHelper {
-  static showavatar(String avatar) {
+  static showavatar(String avatar, {double size = 40}) {
     return CircleAvatar(
       radius: 20,
       child: avatar.toString() == ""
           ? const Icon(Icons.person)
           : ClipOval(
               child: CachedNetworkImage(
-                imageUrl: avatar.toString(), // Hiển thị ảnh từ URL
-                width: 40,
-                height: 40,
+                imageUrl: avatar.toString(),
+                // Hiển thị ảnh từ URL
+                width: size,
+                height: size,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => const SizedBox(
                   width: 20,

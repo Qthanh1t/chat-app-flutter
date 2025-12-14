@@ -20,8 +20,6 @@ class PostPage extends StatefulWidget {
 
 class _PostPageState extends State<PostPage> {
   final box = Hive.box("chat_app");
-
-  //List<Post> _posts = [];
   final TextEditingController _contentController = TextEditingController();
   final List<File> _imageFiles = [];
   bool _isLoading = false;
@@ -30,7 +28,10 @@ class _PostPageState extends State<PostPage> {
   @override
   void initState() {
     super.initState();
-    fetchPosts();
+    // Gọi fetch lần đầu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchPosts();
+    });
 
     _scrollController.addListener(() {
       if (!context.read<PostProvider>().isLoading &&
@@ -43,34 +44,18 @@ class _PostPageState extends State<PostPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
+  // --- LOGIC GIỮ NGUYÊN ---
   Future<void> fetchPosts({bool refresh = false}) async {
     try {
       await context.read<PostProvider>().fetchPosts(refresh: refresh);
     } catch (err) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đã xảy ra lỗi!"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> fetchPostById(String postId) async {
-    try {
-      await context.read<PostProvider>().fetchPostById(postId);
-    } catch (err) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đã xảy ra lỗi!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Lỗi tải bài viết!"), backgroundColor: Colors.red));
     }
   }
 
@@ -87,24 +72,16 @@ class _PostPageState extends State<PostPage> {
   }
 
   Future<void> submitPost() async {
-    if (_contentController.text.trim().isEmpty) return;
-    setState(() {
-      _isLoading = true;
-    });
+    if (_contentController.text.trim().isEmpty && _imageFiles.isEmpty) return;
+    setState(() => _isLoading = true);
 
     try {
       FormData formData = FormData.fromMap({
         'content': _contentController.text.trim(),
         'images': await Future.wait(_imageFiles.map((img) async {
           final mimeType = lookupMimeType(img.path);
-
-          // Bỏ qua file không phải ảnh
-          if (mimeType == null || !mimeType.startsWith('image/')) {
-            //print("❌ Bỏ qua file không phải ảnh: ${img.path}");
-            return null;
-          }
-
-          final typeSplit = mimeType.split('/'); // ['image', 'jpeg']
+          if (mimeType == null || !mimeType.startsWith('image/')) return null;
+          final typeSplit = mimeType.split('/');
           return await MultipartFile.fromFile(
             img.path,
             filename: img.path.split('/').last,
@@ -114,73 +91,28 @@ class _PostPageState extends State<PostPage> {
       });
 
       await context.read<PostProvider>().summitPost(formData);
-
       _contentController.clear();
-      _imageFiles.clear();
+      setState(() {
+        _imageFiles.clear();
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Đăng bài thành công!"),
+          backgroundColor: Colors.green));
     } catch (err) {
       if (!mounted) return;
-      print(err);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đã xảy ra lỗi!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Đăng bài thất bại!"), backgroundColor: Colors.red));
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  Widget _buildSelectedImagesPreview() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _imageFiles.asMap().entries.map((img) {
-        int index = img.key;
-        File file = img.value;
-        return Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(
-                file,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-              ),
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: InkWell(
-                onTap: () => setState(() {
-                  _imageFiles.removeAt(index);
-                }),
-                child: Container(
-                  decoration: const BoxDecoration(
-                      color: Colors.black54, shape: BoxShape.circle),
-                  child: const Icon(Icons.close, color: Colors.white, size: 18),
-                ),
-              ),
-            ),
-          ],
-        );
-      }).toList(),
-    );
   }
 
   Future<void> likeunlikePost(String postId, bool isLiked) async {
     try {
       context.read<PostProvider>().toggleLike(postId, box.get("userId"));
     } catch (err) {
-      if (!mounted) return;
-      //print(err);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đã xảy ra lỗi!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Ignore
     }
   }
 
@@ -188,144 +120,469 @@ class _PostPageState extends State<PostPage> {
     try {
       await context.read<PostProvider>().addComment(postId, commentText);
     } catch (err) {
-      if (!mounted) return;
-      //print(err);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Đã xảy ra lỗi!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Ignore
     }
   }
+
+  // --- UI COMPONENTS ---
 
   void showCommentsSheet(BuildContext context, Post post) {
     final TextEditingController commentController = TextEditingController();
 
     showModalBottomSheet(
-        context: context,
-        isScrollControlled: true, // cho phép full height
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        builder: (_) {
-          final screenHeight = MediaQuery.of(context).size.height;
-          final topPadding = MediaQuery.of(context).padding.top;
-          return Consumer<PostProvider>(
-            builder: (context, postProvider, child) {
-              final updatedPost = postProvider.getPostById(post.id);
-              return SafeArea(
-                  child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: screenHeight - topPadding, // không tràn status bar
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          height: MediaQuery.of(context).size.height * 0.85,
+          child: Column(
+            children: [
+              // Header Sheet
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                alignment: Alignment.center,
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2)),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.max,
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: Text("Bình luận",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+              const Divider(height: 1),
+
+              // Danh sách comment
+              Expanded(
+                child: Consumer<PostProvider>(
+                  builder: (context, postProvider, child) {
+                    final updatedPost = postProvider.getPostById(post.id);
+                    if (updatedPost == null || updatedPost.comments.isEmpty) {
+                      return Center(
+                        child: Text("Chưa có bình luận nào.",
+                            style: TextStyle(color: Colors.grey[500])),
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: updatedPost.comments.length,
+                      itemBuilder: (context, index) {
+                        return _buildCommentItem(updatedPost.comments[index]);
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Input Comment
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                    16, 12, 16, MediaQuery.of(context).viewInsets.bottom + 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        offset: const Offset(0, -2),
+                        blurRadius: 10)
+                  ],
+                ),
+                child: Row(
                   children: [
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.thumb_up, size: 20),
-                              const SizedBox(width: 6),
-                              Text('${updatedPost?.likes.length}'),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              const Icon(Icons.comment, size: 20),
-                              const SizedBox(width: 6),
-                              Text('${updatedPost?.comments.length}'),
-                            ],
-                          ),
-                        ],
-                      ),
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.grey[200],
+                      child: ClipOval(
+                          child: ImageHelper.showavatar(box.get("avatar"))),
                     ),
-                    const Divider(height: 1),
-
-                    // Body
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: updatedPost?.comments.length,
-                        itemBuilder: (context, index) {
-                          final comment = updatedPost?.comments[index];
-                          return buildCommentItem(comment!);
-                        },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: TextField(
+                          controller: commentController,
+                          decoration: const InputDecoration(
+                            hintText: "Viết bình luận...",
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            isDense: true,
+                          ),
+                        ),
                       ),
                     ),
-
-                    // Footer nhập comment
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: 12,
-                        right: 12,
-                        bottom: MediaQuery.of(context).viewInsets.bottom +
-                            12, // tránh bị che bởi bàn phím
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: commentController,
-                              decoration: const InputDecoration(
-                                hintText: "Nhập bình luận...",
-                                border: OutlineInputBorder(),
-                                contentPadding:
-                                    EdgeInsets.symmetric(horizontal: 12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.send, color: Colors.blue),
-                            onPressed: () {
-                              final text = commentController.text.trim();
-                              if (text.isNotEmpty) {
-                                commentPost(post.id, text);
-                                commentController.clear();
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send_rounded,
+                          color: Color(0xFF2575FC)),
+                      onPressed: () {
+                        if (commentController.text.trim().isNotEmpty) {
+                          commentPost(post.id, commentController.text.trim());
+                          commentController.clear();
+                        }
+                      },
                     ),
                   ],
                 ),
-              ));
-            },
-          );
-        });
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget buildCommentItem(Comment comment) {
+  Widget _buildCommentItem(Comment comment) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.grey[200],
+            child: ClipOval(child: ImageHelper.showavatar(comment.user.avatar)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(comment.user.username,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Text(comment.text, style: const TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, top: 4),
+                  child: Text(
+                    Time.formatPostTime(comment.createdAt),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget tạo bài viết (Status box)
+  Widget _buildCreatePostCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(131, 219, 219, 219),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            leading: ImageHelper.showavatar(comment.user.avatar),
-            title: Text(comment.user.username),
-            subtitle: Text(Time.formatPostTime(comment.createdAt)),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.grey[200],
+                child:
+                    ClipOval(child: ImageHelper.showavatar(box.get("avatar"))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: TextField(
+                    controller: _contentController,
+                    decoration: const InputDecoration(
+                      hintText: "Bạn đang nghĩ gì?",
+                      border: InputBorder.none,
+                    ),
+                    maxLines: null,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(
-            height: 6,
+          if (_imageFiles.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: SizedBox(
+                height: 100,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _imageFiles.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    return Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(_imageFiles[index],
+                              width: 100, height: 100, fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _imageFiles.removeAt(index)),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.close,
+                                  color: Colors.white, size: 14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1),
           ),
-          Text(
-            comment.text,
-            style: const TextStyle(fontSize: 15),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: pickImages,
+                icon: const Icon(Icons.photo_library_rounded,
+                    color: Colors.green),
+                label: const Text("Ảnh/Video",
+                    style: TextStyle(color: Colors.black87)),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: _isLoading ? null : submitPost,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2575FC),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Text("Đăng"),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget hiển thị từng bài post
+  Widget _buildPostCard(Post post) {
+    bool isLiked = post.likes.contains(box.get("userId"));
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16), // Bottom margin
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Post
+          ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.grey[200],
+              child:
+                  ClipOval(child: ImageHelper.showavatar(post.author.avatar)),
+            ),
+            title: Text(post.author.username,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(
+              Time.formatPostTime(post.createdAt),
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            trailing: const Icon(Icons.more_horiz, color: Colors.grey),
+          ),
+
+          // Content Post
+          if (post.content.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(post.content,
+                  style: const TextStyle(fontSize: 15, height: 1.4)),
+            ),
+          const SizedBox(height: 12),
+
+          // Images Post (Grid View giả lập)
+          if (post.images.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildPostImages(post.images),
+            ),
+
+          // Stats (Like/Comment count)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                      color: Color(0xFF2575FC), shape: BoxShape.circle),
+                  child:
+                      const Icon(Icons.thumb_up, color: Colors.white, size: 10),
+                ),
+                const SizedBox(width: 6),
+                Text("${post.likes.length}",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                const Spacer(),
+                Text("${post.comments.length} bình luận",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Divider(height: 1),
+          ),
+
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => likeunlikePost(post.id, isLiked),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isLiked ? Icons.thumb_up : Icons.thumb_up_off_alt,
+                          color: isLiked
+                              ? const Color(0xFF2575FC)
+                              : Colors.grey[600],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Thích",
+                          style: TextStyle(
+                            color: isLiked
+                                ? const Color(0xFF2575FC)
+                                : Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () => showCommentsSheet(context, post),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_bubble_outline_rounded,
+                            color: Colors.grey[600], size: 20),
+                        const SizedBox(width: 8),
+                        Text("Bình luận",
+                            style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper hiển thị ảnh đẹp mắt hơn
+  Widget _buildPostImages(List<dynamic> images) {
+    // Nếu chỉ có 1 ảnh -> hiện Full width
+    if (images.length == 1) {
+      return ImageHelper.showimage(context, images[0]);
+    }
+    // Nếu nhiều ảnh -> Hiển thị Grid hoặc Carousel
+    // Ở đây demo dạng nằm ngang scroll được để đơn giản nhưng đẹp
+    return SizedBox(
+      height: 250,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 0.8, // Ảnh dọc nhẹ
+              child: ImageHelper.showimage(context, images[index]),
+            ),
+          );
+        },
       ),
     );
   }
@@ -333,161 +590,35 @@ class _PostPageState extends State<PostPage> {
   @override
   Widget build(BuildContext context) {
     final posts = context.watch<PostProvider>().posts;
+    final hasMore = context.read<PostProvider>().hasMore;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA), // Nền xám nhạt
       appBar: AppBar(
-        title: const Text('Bài viết'),
+        title: const Text("Bảng tin",
+            style:
+                TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
       ),
       body: RefreshIndicator(
         onRefresh: () => fetchPosts(refresh: true),
+        color: const Color(0xFF2575FC),
         child: ListView.builder(
           controller: _scrollController,
-          itemCount:
-              posts.length + 2, // +1 cho form tạo bài viết, +1 cho loading
+          itemCount: posts.length + 2, // 1 for CreatePost, 1 for Loading
           itemBuilder: (context, index) {
             if (index == 0) {
-              // --- PHẦN TẠO BÀI VIẾT ---
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _contentController,
-                      decoration: InputDecoration(
-                        hintText: "Bạn đang nghĩ gì",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                      maxLines: null,
-                    ),
-                    const SizedBox(height: 10),
-                    if (_imageFiles.isNotEmpty) _buildSelectedImagesPreview(),
-                    Row(
-                      children: [
-                        TextButton(
-                          onPressed: pickImages,
-                          child: const Icon(Icons.photo),
-                        ),
-                        const Spacer(),
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : submitPost,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Đăng bài'),
-                        )
-                      ],
-                    ),
-                  ],
-                ),
-              );
+              return _buildCreatePostCard();
             } else if (index <= posts.length) {
-              // --- HIỂN THỊ BÀI VIẾT ---
-              final post = posts[index - 1];
-              bool isLiked = post.likes.contains(box.get("userId"));
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        leading: ImageHelper.showavatar(post.author.avatar),
-                        title: Text(post.author.username),
-                        subtitle: Text(Time.formatPostTime(post.createdAt)),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(post.content),
-                      if (post.images.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            ...post.images.map(
-                              (imageUrl) =>
-                                  ImageHelper.showimage(context, imageUrl),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () {
-                              likeunlikePost(post.id, isLiked);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.thumb_up,
-                                      size: 20,
-                                      color:
-                                          isLiked ? Colors.blue : Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${post.likes.length}',
-                                    style: TextStyle(
-                                      color:
-                                          isLiked ? Colors.blue : Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () {
-                              showCommentsSheet(context, post);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.comment,
-                                      size: 20, color: Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Text('${post.comments.length}',
-                                      style:
-                                          const TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _buildPostCard(posts[index - 1]);
             } else {
-              // --- LOADING HOẶC HẾT DỮ LIỆU ---
-              return context.read<PostProvider>().hasMore
-                  ? const Center(
-                      child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
-                    ))
-                  : const SizedBox.shrink();
+              return hasMore
+                  ? const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: CircularProgressIndicator()))
+                  : const SizedBox(height: 40); // Spacer bottom
             }
           },
         ),

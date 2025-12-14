@@ -6,7 +6,7 @@ class Conversation {
   final String? groupName;
   final List<User> participants;
   final dynamic lastMessage; // Có thể là Message Model hoặc Map
-  final String lastMessageAt;
+  final DateTime lastMessageAt;
 
   Conversation({
     required this.id,
@@ -22,11 +22,10 @@ class Conversation {
       id: json['_id'],
       type: json['type'],
       groupName: json['groupName'],
-      participants: (json['participants'] as List)
-          .map((p) => User.fromJson(p))
-          .toList(),
+      participants:
+          (json['participants'] as List).map((p) => User.fromJson(p)).toList(),
       lastMessage: json['lastMessage'],
-      lastMessageAt: json['lastMessageAt'],
+      lastMessageAt: DateTime.parse(json['lastMessageAt']),
     );
   }
 
@@ -39,7 +38,7 @@ class Conversation {
     } else {
       // Trong chat 1-1, tìm người kia
       final otherUser = participants.firstWhere(
-            (user) => user.id != myUserId,
+        (user) => user.id != myUserId,
         orElse: () => participants.first, // Fallback
       );
       return otherUser.username;
@@ -52,7 +51,7 @@ class Conversation {
       return ''; // Hoặc trả về một avatar nhóm mặc định
     } else {
       final otherUser = participants.firstWhere(
-            (user) => user.id != myUserId,
+        (user) => user.id != myUserId,
         orElse: () => participants.first,
       );
       return otherUser.avatar;
