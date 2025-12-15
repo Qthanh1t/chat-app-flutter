@@ -107,29 +107,20 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // --- Logo / Branding Section ---
-                  const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Z-Chat",
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: SizedBox(
+                      width: 150,
+                      height: 150,
+                      child: Image.asset(
+                        'assets/images/icon.png',
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Kết nối mọi lúc, mọi nơi",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
+
                   const SizedBox(height: 40),
 
                   // --- Login Form Card ---

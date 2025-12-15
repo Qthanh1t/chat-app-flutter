@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Chat',
+      title: 'Z-Chat',
       initialRoute: AppRoutes.splash,
       routes: {
         AppRoutes.splash: (context) => const SplashPage(),
